@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
-Version: 1.0.0
+Version: 1.0.1
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache 2.0
@@ -14,7 +14,7 @@ require_once 'sdk/vendor/autoload.php';
 use OSS\OssClient;
 use OSS\Core\OssException;
 
-define('OSS_VERSION', "1.0.0");
+define('OSS_VERSION', "1.0.1");
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 // 初始化选项
@@ -67,7 +67,7 @@ function oss_get_bucket_name()
  * @param  $opt
  * @return bool
  */
-function oss_file_upload($object, $file)
+function oss_file_upload($object, $file, $no_local_file = false)
 {
     //如果文件不存在，直接返回false
     if (!@file_exists($file)) {
@@ -80,6 +80,9 @@ function oss_file_upload($object, $file)
     } catch ( OssException $e ) {
 //        echo 'Error Message:' . $e->getMessage() . PHP_EOL;
 //        echo 'Error Code:' . $e->getCode() . PHP_EOL;
+    }
+    if ($no_local_file) {
+        oss_delete_local_file($file);
     }
 }
 
@@ -151,12 +154,8 @@ function oss_upload_attachments($metadata)
     $file = get_home_path() . $object; //向上兼容，较早的WordPress版本上$metadata['file']存放的是相对路径
 
     //执行上传操作
-    oss_file_upload('/' . $object, $file);
+    oss_file_upload('/' . $object, $file, oss_is_delete_local_file());
 
-    //如果不在本地保存，则删除本地文件
-    if (oss_is_delete_local_file()) {
-        oss_delete_local_file($file);
-    }
     return $metadata;
 }
 
@@ -176,8 +175,6 @@ function oss_upload_thumbs($metadata)
         $oss_options = get_option('oss_options', true);
         //是否需要上传缩略图
         $nothumb = (esc_attr($oss_options['nothumb']) == 'true');
-        //是否需要删除本地文件
-        $is_delete_local_file = (esc_attr($oss_options['nolocalsaving']) == 'true');
         //如果禁止上传缩略图，就不用继续执行了
         if ($nothumb) {
             return $metadata;
@@ -205,13 +202,7 @@ function oss_upload_thumbs($metadata)
             $file = $file_path . $val['file'];
 
             //执行上传操作
-            oss_file_upload($object, $file);
-
-            //如果不在本地保存，则删除
-            if ($is_delete_local_file) {
-                oss_delete_local_file($file);
-            }
-
+            oss_file_upload($object, $file, (esc_attr($oss_options['nolocalsaving']) == 'true'));
         }
     }
     return $metadata;
