@@ -33,6 +33,12 @@ Github 下载节点：[https://github.com/sy-records/aliyun-oss-wordpress/releas
 * 方法一：在 WordPress 插件管理页面有设置按钮，进行设置
 * 方法二：在 WordPress 后台管理左侧导航栏`设置`下`阿里云OSS设置`，点击进入设置页面
 
+## 常见问题
+
+* 通过文件URL访问图片无法预览而是以附件形式下载？
+
+因为Bucket是2019年9月23日后创建的，使用默认域名时会自动下载，需要绑定自有域名访问。具体参考[阿里云文档](https://help.aliyun.com/document_detail/142631.html)。
+
 ## 插件截图
 
 ![设置页面](screenshot-1.png)
