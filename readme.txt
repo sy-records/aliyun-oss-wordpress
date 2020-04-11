@@ -5,7 +5,7 @@ Tags: oss, 阿里云, 对象存储, aliyun
 Requires at least: 4.2
 Tested up to: 5.4
 Requires PHP: 5.6.0
-Stable tag: 1.0.1
+Stable tag: 1.1.0
 License: Apache 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0.html
 
@@ -38,7 +38,7 @@ License URI: http://www.apache.org/licenses/LICENSE-2.0.html
 
 [沈唁志](https://qq52o.me "沈唁志")
 
-QQ交流群：887595381
+欢迎加入沈唁的WordPress云存储全家桶QQ交流群：887595381
 
 == Installation ==
 
@@ -53,11 +53,19 @@ QQ交流群：887595381
 
 == Frequently Asked Questions ==
 
-= 怎么替换文章中之前的旧资源地址链接 =
+= 怎么替换文章中之前的旧资源地址链接？ =
 
 这个插件已经加上了替换数据库中之前的旧资源地址链接功能，只需要填好对应的链接即可
 
+= 通过文件URL访问图片无法预览而是以附件形式下载？ =
+
+因为Bucket是2019年9月23日后创建的，使用默认域名时会自动下载，需要绑定自有域名访问。具体参考[阿里云文档](https://help.aliyun.com/document_detail/142631.html)。
+
 == Changelog ==
+
+= 1.1.0 =
+* 优化删除文件使用删除多个接口
+* 修复勾选不在本地保存图片后媒体库显示默认图片问题
 
 = 1.0.1 =
 * 修复勾选不在本地保存图片后媒体库显示默认图片问题

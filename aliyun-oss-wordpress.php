@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
-Version: 1.0.1
+Version: 1.1.0
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache 2.0
@@ -14,7 +14,7 @@ require_once 'sdk/vendor/autoload.php';
 use OSS\OssClient;
 use OSS\Core\OssException;
 
-define('OSS_VERSION', "1.0.1");
+define('OSS_VERSION', "1.1.0");
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 // 初始化选项
@@ -123,7 +123,7 @@ function oss_delete_local_file($file)
 }
 
 /**
- * 删除oss中的文件
+ * 删除oss中的单个文件
  * @param $file
  * @return bool
  */
@@ -135,6 +135,17 @@ function oss_delete_oss_file($file)
 }
 
 /**
+ * 批量删除文件
+ * @param $files
+ */
+function oss_delete_oss_files(array $files)
+{
+    $bucket = oss_get_bucket_name();
+    $ossClient = oss_get_client();
+    $ossClient->deleteObjects($bucket, $files);
+}
+
+/**
  * 上传附件（包括图片的原图）
  *
  * @param  $metadata
@@ -142,19 +153,32 @@ function oss_delete_oss_file($file)
  */
 function oss_upload_attachments($metadata)
 {
-    //生成object在oss中的存储路径
-    if (get_option('upload_path') == '.') {
-        //如果含有“./”则去除之
-        $metadata['file'] = str_replace("./", '', $metadata['file']);
+    $mime_types = get_allowed_mime_types();
+    $image_mime_types = array(
+        $mime_types['jpg|jpeg|jpe'],
+        $mime_types['gif'],
+        $mime_types['png'],
+        $mime_types['bmp'],
+        $mime_types['tiff|tif'],
+        $mime_types['ico'],
+    );
+    // 例如mp4等格式 上传后根据配置选择是否删除 删除后媒体库会显示默认图片 点开内容是正常的
+    // 图片在缩略图处理
+    if (!in_array($metadata['type'], $image_mime_types)) {
+        //生成object在oss中的存储路径
+        if (get_option('upload_path') == '.') {
+            //如果含有“./”则去除之
+            $metadata['file'] = str_replace("./", '', $metadata['file']);
+        }
+        $object = str_replace("\\", '/', $metadata['file']);
+        $object = str_replace(get_home_path(), '', $object);
+
+        //在本地的存储路径
+        $file = get_home_path() . $object; //向上兼容，较早的WordPress版本上$metadata['file']存放的是相对路径
+
+        //执行上传操作
+        oss_file_upload('/' . $object, $file, oss_is_delete_local_file());
     }
-    $object = str_replace("\\", '/', $metadata['file']);
-    $object = str_replace(get_home_path(), '', $object);
-
-    //在本地的存储路径
-    $file = get_home_path() . $object; //向上兼容，较早的WordPress版本上$metadata['file']存放的是相对路径
-
-    //执行上传操作
-    oss_file_upload('/' . $object, $file, oss_is_delete_local_file());
 
     return $metadata;
 }
@@ -169,6 +193,15 @@ if (substr_count($_SERVER['REQUEST_URI'], '/update.php') <= 0) {
  */
 function oss_upload_thumbs($metadata)
 {
+    //获取上传路径
+    $wp_uploads = wp_upload_dir();
+    $basedir = $wp_uploads['basedir'];
+    if (isset($metadata['file'])) {
+        // Maybe there is a problem with the old version
+        $object ='/' . get_option('upload_path') . '/' . $metadata['file'];
+        $file = $basedir . '/' . $metadata['file'];
+        oss_file_upload($object, $file, oss_is_delete_local_file());
+    }
     //上传所有缩略图
     if (isset($metadata['sizes']) && count($metadata['sizes']) > 0) {
         //获取oss插件的配置信息
@@ -179,12 +212,8 @@ function oss_upload_thumbs($metadata)
         if ($nothumb) {
             return $metadata;
         }
-        //获取上传路径
-        $wp_uploads = wp_upload_dir();
-        $basedir = $wp_uploads['basedir'];
-        $file_dir = $metadata['file'];
         //得到本地文件夹和远端文件夹
-        $file_path = $basedir . '/' . dirname($file_dir) . '/';
+        $file_path = $basedir . '/' . dirname($metadata['file']) . '/';
         if (get_option('upload_path') == '.') {
             $file_path = str_replace("\\", '/', $file_path);
             $file_path = str_replace(get_home_path() . "./", '', $file_path);
@@ -220,26 +249,31 @@ if (substr_count($_SERVER['REQUEST_URI'], '/update.php') <= 0) {
 function oss_delete_remote_attachment($post_id) {
     $meta = wp_get_attachment_metadata( $post_id );
 
-    $oss_options = get_option('oss_options', true);
-
     if (isset($meta['file'])) {
+        $deleteObjects = [];
+
         // meta['file']的格式为 "2020/01/wp-bg.png"
         $upload_path = get_option('upload_path');
         if ($upload_path == '') {
             $upload_path = 'wp-content/uploads';
         }
         $file_path = $upload_path . '/' . $meta['file'];
-        oss_delete_oss_file(str_replace("\\", '/', $file_path));
+
+        $deleteObjects[] = str_replace("\\", '/', $file_path);
+
+        $oss_options = get_option('oss_options', true);
         $is_nothumb = (esc_attr($oss_options['nothumb']) == 'false');
         if ($is_nothumb) {
             // 删除缩略图
             if (isset($meta['sizes']) && count($meta['sizes']) > 0) {
                 foreach ($meta['sizes'] as $val) {
                     $size_file = dirname($file_path) . '/' . $val['file'];
-                    oss_delete_oss_file(str_replace("\\", '/', $size_file));
+                    $deleteObjects[] = str_replace("\\", '/', $size_file);
                 }
             }
         }
+
+        oss_delete_oss_files($deleteObjects);
     }
 }
 add_action('delete_attachment', 'oss_delete_remote_attachment');
