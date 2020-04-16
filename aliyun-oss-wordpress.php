@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
-Version: 1.1.0
+Version: 1.1.1
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache 2.0
@@ -14,7 +14,7 @@ require_once 'sdk/vendor/autoload.php';
 use OSS\OssClient;
 use OSS\Core\OssException;
 
-define('OSS_VERSION', "1.1.0");
+define('OSS_VERSION', "1.1.1");
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 // 初始化选项
@@ -196,16 +196,16 @@ function oss_upload_thumbs($metadata)
     //获取上传路径
     $wp_uploads = wp_upload_dir();
     $basedir = $wp_uploads['basedir'];
+    //获取oss插件的配置信息
+    $oss_options = get_option('oss_options', true);
     if (isset($metadata['file'])) {
         // Maybe there is a problem with the old version
         $object ='/' . get_option('upload_path') . '/' . $metadata['file'];
         $file = $basedir . '/' . $metadata['file'];
-        oss_file_upload($object, $file, oss_is_delete_local_file());
+        oss_file_upload($object, $file, (esc_attr($oss_options['nolocalsaving']) == 'true'));
     }
     //上传所有缩略图
     if (isset($metadata['sizes']) && count($metadata['sizes']) > 0) {
-        //获取oss插件的配置信息
-        $oss_options = get_option('oss_options', true);
         //是否需要上传缩略图
         $nothumb = (esc_attr($oss_options['nothumb']) == 'true');
         //如果禁止上传缩略图，就不用继续执行了
