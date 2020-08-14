@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
-Version: 1.1.1
+Version: 1.2.0
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache 2.0
@@ -14,7 +14,7 @@ require_once 'sdk/vendor/autoload.php';
 use OSS\OssClient;
 use OSS\Core\OssException;
 
-define('OSS_VERSION', "1.1.1");
+define('OSS_VERSION', '1.2.0');
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 // 初始化选项
@@ -60,12 +60,9 @@ function oss_get_bucket_name()
 }
 
 /**
- * 上传函数
- *
- * @param  $object
- * @param  $file
- * @param  $opt
- * @return bool
+ * @param $object
+ * @param $file
+ * @param false $no_local_file
  */
 function oss_file_upload($object, $file, $no_local_file = false)
 {
@@ -167,14 +164,14 @@ function oss_upload_attachments($metadata)
     if (!in_array($metadata['type'], $image_mime_types)) {
         //生成object在oss中的存储路径
         if (get_option('upload_path') == '.') {
-            //如果含有“./”则去除之
             $metadata['file'] = str_replace("./", '', $metadata['file']);
         }
         $object = str_replace("\\", '/', $metadata['file']);
-        $object = str_replace(get_home_path(), '', $object);
+        $home_path = get_home_path();
+        $object = str_replace($home_path, '', $object);
 
         //在本地的存储路径
-        $file = get_home_path() . $object; //向上兼容，较早的WordPress版本上$metadata['file']存放的是相对路径
+        $file = $home_path . $object; //向上兼容，较早的WordPress版本上$metadata['file']存放的是相对路径
 
         //执行上传操作
         oss_file_upload('/' . $object, $file, oss_is_delete_local_file());
@@ -200,8 +197,18 @@ function oss_upload_thumbs($metadata)
     $oss_options = get_option('oss_options', true);
     if (isset($metadata['file'])) {
         // Maybe there is a problem with the old version
-        $object ='/' . get_option('upload_path') . '/' . $metadata['file'];
         $file = $basedir . '/' . $metadata['file'];
+        $upload_path = get_option('upload_path');
+        if ($upload_path != '.') {
+            $path_array = explode($upload_path, $file);
+            if (isset($path_array[1]) && !empty($path_array[1])) {
+                $object = '/' . $upload_path . $path_array[1];
+            }
+        } else {
+            $object = '/' . $metadata['file'];
+            $file = str_replace('./', '', $file);
+        }
+
         oss_file_upload($object, $file, (esc_attr($oss_options['nolocalsaving']) == 'true'));
     }
     //上传所有缩略图
@@ -214,11 +221,9 @@ function oss_upload_thumbs($metadata)
         }
         //得到本地文件夹和远端文件夹
         $file_path = $basedir . '/' . dirname($metadata['file']) . '/';
-        if (get_option('upload_path') == '.') {
-            $file_path = str_replace("\\", '/', $file_path);
-            $file_path = str_replace(get_home_path() . "./", '', $file_path);
-        } else {
-            $file_path = str_replace("\\", '/', $file_path);
+        $file_path = str_replace("\\", '/', $file_path);
+        if ($upload_path == '.') {
+            $file_path = str_replace('./', '', $file_path);
         }
 
         $object_path = str_replace(get_home_path(), '', $file_path);
@@ -304,8 +309,13 @@ function oss_function_each(&$array)
     return $res;
 }
 
+/**
+ * @param $dir
+ * @return array
+ */
 function oss_read_dir_queue($dir)
 {
+    $dd = [];
     if (isset($dir)) {
         $files = array();
         $queue = array($dir);
@@ -325,17 +335,14 @@ function oss_read_dir_queue($dir)
             }
             closedir($handle);
         }
-        $i = '';
+        $upload_path = get_option('upload_path');
         foreach ($files as $v) {
-            $i++;
             if (!is_dir($v)) {
-                $dd[$i]['j'] = $v;
-                $dd[$i]['x'] = '/' . get_option('upload_path') . explode(get_option('upload_path'), $v)[1];
+                $dd[] = ['filepath' => $v, 'key' =>  '/' . $upload_path . explode($upload_path, $v)[1]];
             }
         }
-    } else {
-        $dd = '';
     }
+
     return $dd;
 }
 
@@ -378,24 +385,28 @@ function oss_setting_page()
     }
 
     if (!empty($_POST) and $_POST['type'] == 'aliyun_oss_all') {
-        $synv = oss_read_dir_queue(get_home_path() . get_option('upload_path'));
-        $i = 0;
-        foreach ($synv as $k) {
-            $i++;
-            oss_file_upload($k['x'], $k['j']);
+        $sync = oss_read_dir_queue(get_home_path() . get_option('upload_path'));
+        foreach ($sync as $k) {
+            oss_file_upload($k['key'], $k['filepath']);
         }
-        echo '<div class="updated"><p><strong>本次操作成功同步' . $i . '个文件</strong></p></div>';
+        echo '<div class="updated"><p><strong>本次操作成功同步' . count($sync) . '个文件</strong></p></div>';
     }
 
     // 替换数据库链接
     if(!empty($_POST) and $_POST['type'] == 'aliyun_oss_replace') {
-        global $wpdb;
-        $table_name = $wpdb->prefix .'posts';
-        $oldurl = esc_url_raw($_POST['old_url']);
-        $newurl = esc_url_raw($_POST['new_url']);
-        $result = $wpdb->query("UPDATE $table_name SET post_content = REPLACE( post_content, '$oldurl', '$newurl') ");
+        $old_url = esc_url_raw($_POST['old_url']);
+        $new_url = esc_url_raw($_POST['new_url']);
 
-        echo '<div class="updated"><p><strong>替换成功！共批量执行'.$result.'条！</strong></p></div>';
+        global $wpdb;
+        $posts_name = $wpdb->prefix .'posts';
+        // 文章内容
+        $posts_result = $wpdb->query("UPDATE $posts_name SET post_content = REPLACE( post_content, '$old_url', '$new_url') ");
+
+        // 修改题图之类的
+        $postmeta_name = $wpdb->prefix .'postmeta';
+        $postmeta_result = $wpdb->query("UPDATE $postmeta_name SET meta_value = REPLACE( meta_value, '$old_url', '$new_url') ");
+
+        echo '<div class="updated"><p><strong>替换成功！共替换文章内链'.$posts_result.'条、题图链接'.$postmeta_result.'条！</strong></p></div>';
     }
 
     // 若$options不为空数组，则更新数据
@@ -433,7 +444,7 @@ function oss_setting_page()
     ?>
     <div class="wrap" style="margin: 10px;">
         <h1>阿里云 OSS 设置 <span style="font-size: 13px;">当前版本：<?php echo OSS_VERSION; ?></span></h1>
-        <p>如果觉得此插件对你有所帮助，不妨到 <a href="https://github.com/sy-records/aliyun-oss-wordpress" target="_blank">Github</a> 上点个<code>Star</code>，<code>Watch</code>关注更新；</p>
+        <p>如果觉得此插件对你有所帮助，不妨到 <a href="https://github.com/sy-records/aliyun-oss-wordpress" target="_blank">GitHub</a> 上点个<code>Star</code>，<code>Watch</code>关注更新；<a href="//shang.qq.com/wpa/qunwpa?idkey=c7f4fbd7ef84184555dfb6377d8ae087b3d058d8eeae1ff8e2da25c00d53173f" target="_blank">欢迎加入云存储插件交流群,QQ群号:887595381</a>；</p>
         <hr/>
         <form name="form1" method="post" action="<?php echo wp_nonce_url('./options-general.php?page=' . OSS_BASEFOLDER . '/aliyun-oss-wordpress.php'); ?>">
             <table class="form-table">
@@ -591,7 +602,7 @@ function oss_setting_page()
                     <input type="hidden" name="type" value="aliyun_oss_replace">
                     <td>
                         <input type="submit" name="submit"  class="button button-secondary" value="开始替换"/>
-                        <p><b>注意：如果是首次替换，请注意备份！此功能只限于替换文章中使用的资源链接</b></p>
+                        <p><b>注意：如果是首次替换，请注意备份！此功能会替换文章以及设置的特色图片（题图）等使用的资源链接</b></p>
                     </td>
                 </tr>
             </table>
