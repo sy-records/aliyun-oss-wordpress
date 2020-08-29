@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
-Version: 1.2.0
+Version: 1.2.1
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache 2.0
@@ -14,7 +14,7 @@ require_once 'sdk/vendor/autoload.php';
 use OSS\OssClient;
 use OSS\Core\OssException;
 
-define('OSS_VERSION', '1.2.0');
+define('OSS_VERSION', '1.2.1');
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 // 初始化选项
@@ -31,6 +31,7 @@ function oss_set_options()
         'nothumb' => "false", // 是否上传缩略图
         'nolocalsaving' => "false", // 是否保留本地备份
         'upload_url_path' => "", // URL前缀
+        'style' => '', // 图片处理
     );
     add_option('oss_options', $options, '', 'yes');
 }
@@ -357,6 +358,40 @@ function oss_plugin_action_links($links, $file)
 }
 add_filter('plugin_action_links', 'oss_plugin_action_links', 10, 2);
 
+add_filter('the_content', 'oss_setting_content_style');
+function oss_setting_content_style($content)
+{
+    $option = get_option('oss_options');
+    if (!empty($option['style'])) {
+        preg_match_all('/<img.*?(?: |\\t|\\r|\\n)?src=[\'"]?(.+?)[\'"]?(?:(?: |\\t|\\r|\\n)+.*?)?>/sim', $content, $images);
+        if (!empty($images) && isset($images[1])) {
+            foreach ($images[1] as $item) {
+                if(strpos($item, $option['upload_url_path']) !== false){
+                    $content = str_replace($item, $item . $option['style'], $content);
+                }
+            }
+        }
+    }
+    return $content;
+}
+
+add_filter('post_thumbnail_html', 'oss_setting_post_thumbnail_style', 10, 3);
+function oss_setting_post_thumbnail_style( $html, $post_id, $post_image_id )
+{
+    $option = get_option('oss_options');
+    if (!empty($option['style']) && has_post_thumbnail()) {
+        preg_match_all('/<img.*?(?: |\\t|\\r|\\n)?src=[\'"]?(.+?)[\'"]?(?:(?: |\\t|\\r|\\n)+.*?)?>/sim', $html, $images);
+        if (!empty($images) && isset($images[1])) {
+            foreach ($images[1] as $item) {
+                if(strpos($item, $option['upload_url_path']) !== false){
+                    $html = str_replace($item, $item . $option['style'], $html);
+                }
+            }
+        }
+    }
+    return $html;
+}
+
 // 在导航栏“设置”中添加条目
 function oss_add_setting_page()
 {
@@ -382,6 +417,7 @@ function oss_setting_page()
         $options['nolocalsaving'] = isset($_POST['nolocalsaving']) ? 'true' : 'false';
         //仅用于插件卸载时比较使用
         $options['upload_url_path'] = isset($_POST['upload_url_path']) ? sanitize_text_field(stripslashes($_POST['upload_url_path'])) : '';
+        $options['style'] = isset($_POST['style']) ? sanitize_text_field($_POST['style']) : '';
     }
 
     if (!empty($_POST) and $_POST['type'] == 'aliyun_oss_all') {
@@ -439,7 +475,8 @@ function oss_setting_page()
 
     $oss_nolocalsaving = esc_attr($oss_options['nolocalsaving']);
     $oss_nolocalsaving = ($oss_nolocalsaving == 'true');
-    
+
+    $oss_style = esc_attr($oss_options['style']);
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
     ?>
     <div class="wrap" style="margin: 10px;">
@@ -553,6 +590,26 @@ function oss_setting_page()
                         <p>2）OSS中的存放路径（即“文件夹”）与上述 <code>本地文件夹</code> 中定义的路径是相同的（出于方便切换考虑）。</p>
 
                         <p>3）如果需要使用 <code>用户域名</code> ，直接将 <code>{OSS外网访问Bucket域名}</code> 替换为 <code>用户域名</code> 即可。</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th>
+                        <legend>图片处理</legend>
+                    </th>
+                    <td>
+                        <input type="text" name="style" value="<?php echo $oss_style; ?>" size="50" placeholder="请输入图片处理样式，留空表示不处理"/>
+
+                        <p><b>获取样式：</b></p>
+
+                        <p>1）在阿里云OSS管理控制台 <a href="https://oss.console.aliyun.com/bucket/<?php echo $oss_regional; ?>/<?php echo $oss_bucket; ?>/process/img" target="_blank">图片处理</a> 中新建样式。具体样式设置参考<a href="https://help.aliyun.com/document_detail/48884.html" target="_blank">阿里云文档</a>。</p>
+
+                        <p>2）填写时需要将<code>默认规则</code>或<code>自定义分隔符</code>和对应的<code>规则名称</code>进行拼接，例如：</p>
+
+                        <p><code>默认规则</code>为<code>?x-oss-process=style/</code>，<code>规则名称</code>为<code>stylename</code></p>
+                        <p>则填写为 <code>?x-oss-process=style/stylename</code></p>
+
+                        <p><code>分隔符</code>为<code>!</code>(感叹号)，<code>规则名称</code>为<code>stylename</code></p>
+                        <p>则填写为 <code>!stylename</code></p>
                     </td>
                 </tr>
                 <tr>
