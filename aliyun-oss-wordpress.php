@@ -601,14 +601,14 @@ function oss_setting_page()
 
                         <p><b>获取样式：</b></p>
 
-                        <p>1）在阿里云OSS管理控制台 <a href="https://oss.console.aliyun.com/bucket/<?php echo $oss_regional; ?>/<?php echo $oss_bucket; ?>/process/img" target="_blank">图片处理</a> 中新建样式。具体样式设置参考<a href="https://help.aliyun.com/document_detail/48884.html" target="_blank">阿里云文档</a>。</p>
+                        <p>1）在阿里云 <a href="https://oss.console.aliyun.com/bucket" target="_blank">OSS管理控制台</a> 对应的 Bucket 中数据处理 -> 图片处理 中新建样式。具体样式设置参考<a href="https://help.aliyun.com/document_detail/48884.html" target="_blank">阿里云文档</a>。</p>
 
-                        <p>2）填写时需要将<code>默认规则</code>或<code>自定义分隔符</code>和对应的<code>规则名称</code>进行拼接，例如：</p>
+                        <p>2）填写时需要将<code>默认规则</code>或<code>自定义分隔符</code>和对应的创建<code>规则名称</code>进行拼接，例如：</p>
 
-                        <p><code>默认规则</code>为<code>?x-oss-process=style/</code>，<code>规则名称</code>为<code>stylename</code></p>
+                        <p>① <code>默认规则</code>为<code>?x-oss-process=style/</code>，<code>规则名称</code>为<code>stylename</code></p>
                         <p>则填写为 <code>?x-oss-process=style/stylename</code></p>
 
-                        <p><code>分隔符</code>为<code>!</code>(感叹号)，<code>规则名称</code>为<code>stylename</code></p>
+                        <p>② <code>分隔符</code>为<code>!</code>(感叹号)，<code>规则名称</code>为<code>stylename</code></p>
                         <p>则填写为 <code>!stylename</code></p>
                     </td>
                 </tr>
