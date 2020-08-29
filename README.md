@@ -17,6 +17,7 @@
 * [x] 支持替换数据库中旧的资源链接地址
 * [x] 支持阿里云对象存储OSS完整地域使用
 * [x] 支持同步历史附件到阿里云对象存储OSS
+* [x] 支持阿里云OSS图片处理
 
 ## 安装
 
@@ -26,9 +27,9 @@ WordPress 后台安装插件页面搜索`OSS Aliyun`，点击安装
 
 ### 下载源码
 
-从 Github 下载源码，通过 WordPress 后台上传安装，或者直接将源码上传到 WordPress 插件目录`wp-content/plugins`，然后在后台启用
+从 GitHub 下载源码，通过 WordPress 后台上传安装，或者直接将源码上传到 WordPress 插件目录`wp-content/plugins`，然后在后台启用
 
-Github 下载节点：[https://github.com/sy-records/aliyun-oss-wordpress/releases/latest](https://github.com/sy-records/aliyun-oss-wordpress/releases/latest)
+GitHub 下载节点：[https://github.com/sy-records/aliyun-oss-wordpress/releases/latest](https://github.com/sy-records/aliyun-oss-wordpress/releases/latest)
 
 ## 修改配置
 
