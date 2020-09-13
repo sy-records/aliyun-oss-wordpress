@@ -23,14 +23,14 @@ register_activation_hook(__FILE__, 'oss_set_options');
 function oss_set_options()
 {
     $options = array(
-        'bucket' => "",
-        'regional' => "oss-cn-shanghai",
-        'accessKeyId' => "",
-        'accessKeySecret' => "",
-        'is_internal' => "false",
-        'nothumb' => "false", // 是否上传缩略图
-        'nolocalsaving' => "false", // 是否保留本地备份
-        'upload_url_path' => "", // URL前缀
+        'bucket' => '',
+        'regional' => 'oss-cn-shanghai',
+        'accessKeyId' => '',
+        'accessKeySecret' => '',
+        'is_internal' => 'false',
+        'nothumb' => 'false', // 是否上传缩略图
+        'nolocalsaving' => 'false', // 是否保留本地备份
+        'upload_url_path' => '', // URL前缀
         'style' => '', // 图片处理
     );
     add_option('oss_options', $options, '', 'yes');
@@ -48,10 +48,10 @@ function oss_get_client()
 function oss_get_bucket_endpoint($oss_option)
 {
     $oss_regional = esc_attr($oss_option['regional']);
-    if ($oss_option['is_internal'] == "true") {
-        return $oss_regional . "-internal.aliyuncs.com";
+    if ($oss_option['is_internal'] == 'true') {
+        return $oss_regional . '-internal.aliyuncs.com';
     }
-    return $oss_regional . ".aliyuncs.com";
+    return $oss_regional . '.aliyuncs.com';
 }
 
 function oss_get_bucket_name()
@@ -75,7 +75,7 @@ function oss_file_upload($object, $file, $no_local_file = false)
     $ossClient = oss_get_client();
     try{
         $ossClient->uploadFile($bucket, ltrim($object, "/"), $file);
-    } catch ( OssException $e ) {
+    } catch (OssException $e) {
 //        echo 'Error Message:' . $e->getMessage() . PHP_EOL;
 //        echo 'Error Code:' . $e->getCode() . PHP_EOL;
     }
@@ -115,7 +115,7 @@ function oss_delete_local_file($file)
         }
 
         return true;
-    } catch (Exception $ex) {
+    } catch (\Exception $ex) {
         return false;
     }
 }
@@ -165,7 +165,7 @@ function oss_upload_attachments($metadata)
     if (!in_array($metadata['type'], $image_mime_types)) {
         //生成object在oss中的存储路径
         if (get_option('upload_path') == '.') {
-            $metadata['file'] = str_replace("./", '', $metadata['file']);
+            $metadata['file'] = str_replace('./', '', $metadata['file']);
         }
         $object = str_replace("\\", '/', $metadata['file']);
         $home_path = get_home_path();
@@ -477,7 +477,7 @@ function oss_setting_page()
     $oss_nolocalsaving = ($oss_nolocalsaving == 'true');
 
     $oss_style = esc_attr($oss_options['style']);
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? 'https://' : 'http://';
     ?>
     <div class="wrap" style="margin: 10px;">
         <h1>阿里云 OSS 设置 <span style="font-size: 13px;">当前版本：<?php echo OSS_VERSION; ?></span></h1>
