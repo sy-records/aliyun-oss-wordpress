@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
-Version: 1.2.1
+Version: 1.2.2
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache 2.0
@@ -14,7 +14,7 @@ require_once 'sdk/vendor/autoload.php';
 use OSS\OssClient;
 use OSS\Core\OssException;
 
-define('OSS_VERSION', '1.2.1');
+define('OSS_VERSION', '1.2.2');
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 // 初始化选项
@@ -267,9 +267,9 @@ function oss_delete_remote_attachment($post_id) {
 
         $deleteObjects[] = str_replace("\\", '/', $file_path);
 
-        $oss_options = get_option('oss_options', true);
-        $is_nothumb = (esc_attr($oss_options['nothumb']) == 'false');
-        if ($is_nothumb) {
+//        $oss_options = get_option('oss_options', true);
+//        $is_nothumb = (esc_attr($oss_options['nothumb']) == 'false');
+//        if ($is_nothumb) {
             // 删除缩略图
             if (isset($meta['sizes']) && count($meta['sizes']) > 0) {
                 foreach ($meta['sizes'] as $val) {
@@ -277,7 +277,7 @@ function oss_delete_remote_attachment($post_id) {
                     $deleteObjects[] = str_replace("\\", '/', $size_file);
                 }
             }
-        }
+//        }
 
         oss_delete_oss_files($deleteObjects);
     }
