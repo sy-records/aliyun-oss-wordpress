@@ -122,8 +122,8 @@ function oss_delete_local_file($file)
 
 /**
  * 删除oss中的单个文件
- * @param $file
- * @return bool
+ *
+ * @param string $file
  */
 function oss_delete_oss_file($file)
 {
@@ -134,7 +134,7 @@ function oss_delete_oss_file($file)
 
 /**
  * 批量删除文件
- * @param $files
+ * @param array $files
  */
 function oss_delete_oss_files(array $files)
 {
@@ -252,7 +252,9 @@ if (substr_count($_SERVER['REQUEST_URI'], '/update.php') <= 0) {
  * 删除远端文件，删除文件时触发
  * @param $post_id
  */
-function oss_delete_remote_attachment($post_id) {
+function oss_delete_remote_attachment($post_id)
+{
+    // 获取图片类附件的meta信息
     $meta = wp_get_attachment_metadata( $post_id );
 
     if (isset($meta['file'])) {
@@ -280,6 +282,25 @@ function oss_delete_remote_attachment($post_id) {
 //        }
 
         oss_delete_oss_files($deleteObjects);
+    } else {
+        // 获取链接删除
+        $link = wp_get_attachment_url($post_id);
+        if ($link) {
+            $upload_path = get_option('upload_path');
+            if ($upload_path != '.') {
+                $file_info = explode($upload_path, $link);
+                if (isset($file_info[1])) {
+                    oss_delete_oss_file($upload_path . $file_info[1]);
+                }
+            } else {
+                $oss_options = get_option('oss_options', true);
+                $oss_upload_url = esc_attr($oss_options['upload_url_path']);
+                $file_info = explode($oss_upload_url, $link);
+                if (isset($file_info[1])) {
+                    oss_delete_oss_file($file_info[1]);
+                }
+            }
+        }
     }
 }
 add_action('delete_attachment', 'oss_delete_remote_attachment');
