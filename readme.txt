@@ -3,9 +3,9 @@ Contributors: shenyanzhi
 Donate link: https://qq52o.me/sponsor.html
 Tags: oss, 阿里云, 对象存储, aliyun
 Requires at least: 4.2
-Tested up to: 5.6
+Tested up to: 5.7
 Requires PHP: 5.6.0
-Stable tag: 1.2.3
+Stable tag: 1.2.4
 License: Apache 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0.html
 
@@ -70,6 +70,10 @@ License URI: http://www.apache.org/licenses/LICENSE-2.0.html
 二是使用对象存储OSS提供的回源功能，配置为镜像方式。如果配置了镜像回源，当用户对该存储空间内一个不存在的文件进行GET操作时，OSS会向回源地址请求这个文件，返回给用户，同时会将该文件存入OSS。这样就达到了上传到OSS的需求。具体配置参考阿里云文档[设置回源规则](https://help.aliyun.com/document_detail/31906.html)
 
 == Changelog ==
+
+= 1.2.4 =
+* 添加 get_home_path 方法判断
+* 支持 WordPress 5.7 版本
 
 = 1.2.3 =
 * 支持删除非图片类型文件
