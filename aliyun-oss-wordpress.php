@@ -17,6 +17,10 @@ use OSS\Core\OssException;
 define('OSS_VERSION', '1.2.3');
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
+if (!function_exists('get_home_path')) {
+    require_once(ABSPATH . 'wp-admin/includes/file.php');
+}
+
 // 初始化选项
 register_activation_hook(__FILE__, 'oss_set_options');
 // 初始化选项
