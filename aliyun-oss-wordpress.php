@@ -390,6 +390,7 @@ function oss_setting_content_style($content)
     if (!empty($option['style'])) {
         preg_match_all('/<img.*?(?: |\\t|\\r|\\n)?src=[\'"]?(.+?)[\'"]?(?:(?: |\\t|\\r|\\n)+.*?)?>/sim', $content, $images);
         if (!empty($images) && isset($images[1])) {
+            $images[1] = array_unique($images[1]);
             foreach ($images[1] as $item) {
                 if(strpos($item, $option['upload_url_path']) !== false){
                     $content = str_replace($item, $item . $option['style'], $content);
@@ -407,6 +408,7 @@ function oss_setting_post_thumbnail_style( $html, $post_id, $post_image_id )
     if (!empty($option['style']) && has_post_thumbnail()) {
         preg_match_all('/<img.*?(?: |\\t|\\r|\\n)?src=[\'"]?(.+?)[\'"]?(?:(?: |\\t|\\r|\\n)+.*?)?>/sim', $html, $images);
         if (!empty($images) && isset($images[1])) {
+            $images[1] = array_unique($images[1]);
             foreach ($images[1] as $item) {
                 if(strpos($item, $option['upload_url_path']) !== false){
                     $html = str_replace($item, $item . $option['style'], $html);
