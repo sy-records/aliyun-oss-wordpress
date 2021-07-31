@@ -131,9 +131,15 @@ function oss_delete_local_file($file)
  */
 function oss_delete_oss_file($file)
 {
-    $bucket = oss_get_bucket_name();
-    $ossClient = oss_get_client();
-    $ossClient->deleteObject($bucket, $file);
+    try {
+        $bucket = oss_get_bucket_name();
+        $ossClient = oss_get_client();
+        $ossClient->deleteObject($bucket, $file);
+    } catch (\Throwable $e) {
+        if (WP_DEBUG) {
+            echo 'Message: ', $e->getMessage(), 'Code: ', $e->getCode(), PHP_EOL;
+        }
+    }
 }
 
 /**
@@ -142,9 +148,15 @@ function oss_delete_oss_file($file)
  */
 function oss_delete_oss_files(array $files)
 {
-    $bucket = oss_get_bucket_name();
-    $ossClient = oss_get_client();
-    $ossClient->deleteObjects($bucket, $files);
+    try {
+        $bucket = oss_get_bucket_name();
+        $ossClient = oss_get_client();
+        $ossClient->deleteObjects($bucket, $files);
+    } catch (\Throwable $e) {
+        if (WP_DEBUG) {
+            echo 'Message: ', $e->getMessage(), 'Code: ', $e->getCode(), PHP_EOL;
+        }
+    }
 }
 
 /**
