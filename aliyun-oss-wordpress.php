@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
-Version: 1.2.6
+Version: 1.2.7
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache 2.0
@@ -14,7 +14,7 @@ require_once 'sdk/vendor/autoload.php';
 use OSS\OssClient;
 use OSS\Core\OssException;
 
-define('OSS_VERSION', '1.2.6');
+define('OSS_VERSION', '1.2.7');
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 if (!function_exists('get_home_path')) {
@@ -545,8 +545,10 @@ function oss_setting_page()
                             <option value="oss-cn-beijing" <?php if ($oss_regional == 'oss-cn-beijing') {echo ' selected="selected"';}?>>华北 2（北京）</option>
                             <option value="oss-cn-zhangjiakou" <?php if ($oss_regional == 'oss-cn-zhangjiakou') {echo ' selected="selected"';}?>>华北 3（张家口）</option>
                             <option value="oss-cn-huhehaote" <?php if ($oss_regional == 'oss-cn-huhehaote') {echo ' selected="selected"';}?>>华北 5（呼和浩特）</option>
+                            <option value="oss-cn-wulanchabu" <?php if ($oss_regional == 'oss-cn-wulanchabu') {echo ' selected="selected"';}?>>华北 6（乌兰察布）</option>
                             <option value="oss-cn-shenzhen" <?php if ($oss_regional == 'oss-cn-shenzhen') {echo ' selected="selected"';}?>>华南 1（深圳）</option>
                             <option value="oss-cn-heyuan" <?php if ($oss_regional == 'oss-cn-heyuan') {echo ' selected="selected"';}?>>华南 2（河源）</option>
+                            <option value="oss-cn-guangzhou" <?php if ($oss_regional == 'oss-cn-guangzhou') {echo ' selected="selected"';}?>>华南 3（广州）</option>
                             <option value="oss-cn-chengdu" <?php if ($oss_regional == 'oss-cn-chengdu') {echo ' selected="selected"';}?>>西南 1（成都）</option>
                             <option value="oss-cn-hongkong" <?php if ($oss_regional == 'oss-cn-hongkong') {echo ' selected="selected"';}?>>中国（香港）</option>
                             <option value="oss-us-west-1" <?php if ($oss_regional == 'oss-us-west-1') {echo ' selected="selected"';}?>>美国西部 1 （硅谷）</option>
