@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
-Version: 1.2.7
+Version: 1.2.8
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache 2.0
@@ -14,7 +14,7 @@ require_once 'sdk/vendor/autoload.php';
 use OSS\OssClient;
 use OSS\Core\OssException;
 
-define('OSS_VERSION', '1.2.7');
+define('OSS_VERSION', '1.2.8');
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 if (!function_exists('get_home_path')) {
@@ -36,6 +36,7 @@ function oss_set_options()
         'nolocalsaving' => 'false', // 是否保留本地备份
         'upload_url_path' => '', // URL前缀
         'style' => '', // 图片处理
+        'update_file_name' => 'false', // 是否重命名文件名
     );
     add_option('oss_options', $options, '', 'yes');
 }
@@ -80,8 +81,9 @@ function oss_file_upload($object, $file, $no_local_file = false)
     try{
         $ossClient->uploadFile($bucket, ltrim($object, "/"), $file);
     } catch (OssException $e) {
-//        echo 'Error Message:' . $e->getMessage() . PHP_EOL;
-//        echo 'Error Code:' . $e->getCode() . PHP_EOL;
+        if (WP_DEBUG) {
+            echo 'Error Message: ', $e->getMessage(), PHP_EOL, 'Error Code: ', $e->getCode();
+        }
     }
     if ($no_local_file) {
         oss_delete_local_file($file);
@@ -137,7 +139,7 @@ function oss_delete_oss_file($file)
         $ossClient->deleteObject($bucket, $file);
     } catch (\Throwable $e) {
         if (WP_DEBUG) {
-            echo 'Message: ', $e->getMessage(), 'Code: ', $e->getCode(), PHP_EOL;
+            echo 'Error Message: ', $e->getMessage(), PHP_EOL, 'Error Code: ', $e->getCode();
         }
     }
 }
@@ -154,7 +156,7 @@ function oss_delete_oss_files(array $files)
         $ossClient->deleteObjects($bucket, $files);
     } catch (\Throwable $e) {
         if (WP_DEBUG) {
-            echo 'Message: ', $e->getMessage(), 'Code: ', $e->getCode(), PHP_EOL;
+            echo 'Error Message: ', $e->getMessage(), PHP_EOL, 'Error Code: ', $e->getCode();
         }
     }
 }
@@ -333,6 +335,21 @@ if (get_option('upload_path') == '.') {
     add_filter('wp_get_attachment_url', 'oss_modefiy_img_url', 30, 2);
 }
 
+function oss_sanitize_file_name($filename)
+{
+    $oss_options = get_option('oss_options');
+    switch ($oss_options['update_file_name']) {
+        case 'md5':
+            return  md5($filename) . '.' . pathinfo($filename, PATHINFO_EXTENSION);
+        case 'time':
+            return date('YmdHis', current_time('timestamp'))  . mt_rand(100, 999) . '.' . pathinfo($filename, PATHINFO_EXTENSION);
+        default:
+            return $filename;
+    }
+}
+
+add_filter( 'sanitize_file_name', 'oss_sanitize_file_name', 10, 1 );
+
 function oss_function_each(&$array)
 {
     $res = array();
@@ -457,6 +474,7 @@ function oss_setting_page()
         //仅用于插件卸载时比较使用
         $options['upload_url_path'] = isset($_POST['upload_url_path']) ? sanitize_text_field(stripslashes($_POST['upload_url_path'])) : '';
         $options['style'] = isset($_POST['style']) ? sanitize_text_field($_POST['style']) : '';
+        $options['update_file_name'] = isset($_POST['update_file_name']) ? sanitize_text_field($_POST['update_file_name']) : 'false';
     }
 
     if (!empty($_POST) and $_POST['type'] == 'aliyun_oss_all') {
@@ -514,6 +532,7 @@ function oss_setting_page()
 
     $oss_nolocalsaving = esc_attr($oss_options['nolocalsaving']);
     $oss_nolocalsaving = ($oss_nolocalsaving == 'true');
+    $oss_update_file_name = esc_attr($oss_options['update_file_name']);
 
     $oss_style = esc_attr($oss_options['style']);
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? 'https://' : 'http://';
@@ -606,6 +625,18 @@ function oss_setting_page()
                         <input type="checkbox"
                                name="nolocalsaving" <?php if ($oss_nolocalsaving) { echo 'checked="checked"'; } ?> />
                         <p>建议不勾选</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th>
+                        <legend>自动重命名文件</legend>
+                    </th>
+                    <td>
+                        <select name="update_file_name">
+                            <option <?php if ($oss_update_file_name == 'false') {echo 'selected="selected"';} ?> value="false">不处理</option>
+                            <option <?php if ($oss_update_file_name == 'md5') {echo 'selected="selected"';} ?> value="md5">MD5</option>
+                            <option <?php if ($oss_update_file_name == 'time') {echo 'selected="selected"';} ?> value="time">时间戳+随机数</option>
+                        </select>
                     </td>
                 </tr>
                 <tr>
