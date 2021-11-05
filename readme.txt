@@ -71,6 +71,8 @@ License URI: http://www.apache.org/licenses/LICENSE-2.0.html
 二是使用对象存储OSS提供的回源功能，配置为镜像方式。如果配置了镜像回源，当用户对该存储空间内一个不存在的文件进行GET操作时，OSS会向回源地址请求这个文件，返回给用户，同时会将该文件存入OSS。这样就达到了上传到OSS的需求。具体配置参考阿里云文档[设置回源规则](https://help.aliyun.com/document_detail/31906.html)
 
 == Changelog ==
+= 1.2.9 =
+* 优化与BuddyPress插件兼容性。
 
 = 1.2.8 =
 * 支持上传文件自动重命名
