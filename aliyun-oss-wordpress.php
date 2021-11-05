@@ -337,18 +337,21 @@ if (get_option('upload_path') == '.') {
 
 function oss_sanitize_file_name($filename)
 {
-    $oss_options = get_option('oss_options');
-    switch ($oss_options['update_file_name']) {
+    $exp = pathinfo($filename["name"],PATHINFO_EXTENSION);//后缀
+    $oss_options = get_option('oss_options')["update_file_name"];
+    switch ($oss_options) {
         case 'md5':
-            return  md5($filename) . '.' . pathinfo($filename, PATHINFO_EXTENSION);
+            $filename["name"] = md5($filename) . '.' . $exp;
+            return  $filename;
         case 'time':
-            return date('YmdHis', current_time('timestamp'))  . mt_rand(100, 999) . '.' . pathinfo($filename, PATHINFO_EXTENSION);
+            $filename["name"] = date('YmdHis', current_time('timestamp'))  . mt_rand(100, 999) . '.' . $exp;
+            return $filename;
         default:
             return $filename;
     }
 }
 
-add_filter( 'sanitize_file_name', 'oss_sanitize_file_name', 10, 1 );
+add_filter( 'wp_handle_upload_prefilter', 'oss_sanitize_file_name', 10, 1 );
 
 function oss_function_each(&$array)
 {
