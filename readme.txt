@@ -5,7 +5,7 @@ Tags: oss, 阿里云, 对象存储, aliyun
 Requires at least: 4.2
 Tested up to: 5.8
 Requires PHP: 5.6.0
-Stable tag: 1.2.8
+Stable tag: 1.2.9
 License: Apache 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0.html
 
