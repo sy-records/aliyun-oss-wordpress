@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
-Version: 1.3.0
+Version: 1.3.1
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache 2.0
@@ -17,7 +17,7 @@ require_once 'sdk/vendor/autoload.php';
 use OSS\OssClient;
 use OSS\Core\OssException;
 
-define('OSS_VERSION', '1.3.0');
+define('OSS_VERSION', '1.3.1');
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 if (!function_exists('get_home_path')) {
@@ -185,7 +185,7 @@ function oss_upload_attachments($metadata)
     // 图片在缩略图处理
     if (!in_array($metadata['type'], $image_mime_types)) {
         //生成object在oss中的存储路径
-        if (get_option('upload_path') == '.') {
+        if (oss_get_option('upload_path') == '.') {
             $metadata['file'] = str_replace('./', '', $metadata['file']);
         }
         $object = str_replace("\\", '/', $metadata['file']);
@@ -220,7 +220,7 @@ function oss_upload_thumbs($metadata)
     if (!empty($metadata['file'])) {
         // Maybe there is a problem with the old version
         $file = $basedir . '/' . $metadata['file'];
-        $upload_path = get_option('upload_path');
+        $upload_path = oss_get_option('upload_path');
         if ($upload_path != '.') {
             $path_array = explode($upload_path, $file);
             if (count($path_array) >= 2) {
@@ -242,7 +242,8 @@ function oss_upload_thumbs($metadata)
             return $metadata;
         }
         //得到本地文件夹和远端文件夹
-        $file_path = $basedir . '/' . dirname($metadata['file']) . '/';
+        $dirname = dirname($metadata['file']);
+        $file_path = $dirname != '.' ? "{$basedir}/{$dirname}/" : "{$basedir}/";
         $file_path = str_replace("\\", '/', $file_path);
         if ($upload_path == '.') {
             $file_path = str_replace('./', '', $file_path);
@@ -282,7 +283,7 @@ function oss_delete_remote_attachment($post_id)
         $deleteObjects = [];
 
         // meta['file']的格式为 "2020/01/wp-bg.png"
-        $upload_path = get_option('upload_path');
+        $upload_path = oss_get_option('upload_path');
         if ($upload_path == '') {
             $upload_path = 'wp-content/uploads';
         }
@@ -307,7 +308,7 @@ function oss_delete_remote_attachment($post_id)
         // 获取链接删除
         $link = wp_get_attachment_url($post_id);
         if ($link) {
-            $upload_path = get_option('upload_path');
+            $upload_path = oss_get_option('upload_path');
             if ($upload_path != '.') {
                 $file_info = explode($upload_path, $link);
                 if (count($file_info) >= 2) {
@@ -334,7 +335,7 @@ function oss_modefiy_img_url($url, $post_id)
     return $url;
 }
 
-if (get_option('upload_path') == '.') {
+if (oss_get_option('upload_path') == '.') {
     add_filter('wp_get_attachment_url', 'oss_modefiy_img_url', 30, 2);
 }
 
@@ -388,12 +389,12 @@ function oss_read_dir_queue($dir)
                     if (is_dir($real_path)) {
                         $queue[] = $real_path;
                     }
-                    //echo explode(get_option('upload_path'),$path)[1];
+                    //echo explode(oss_get_option('upload_path'),$path)[1];
                 }
             }
             closedir($handle);
         }
-        $upload_path = get_option('upload_path');
+        $upload_path = oss_get_option('upload_path');
         foreach ($files as $v) {
             if (!is_dir($v)) {
                 $dd[] = ['filepath' => $v, 'key' =>  '/' . $upload_path . explode($upload_path, $v)[1]];
@@ -424,8 +425,8 @@ function oss_setting_content_style($content)
         if (!empty($images) && isset($images[1])) {
             $images[1] = array_unique($images[1]);
             foreach ($images[1] as $item) {
-                if((strpos($item, $option['upload_url_path']) !== false) && (strpos($item, $option['style']) === false)){
-                    $content = str_replace($item, $item . $option['style'], $content);
+                if((strpos($item, esc_attr($option['upload_url_path'])) !== false) && (strpos($item, esc_attr($option['style'])) === false)){
+                    $content = str_replace($item, $item . esc_attr($option['style']), $content);
                 }
             }
         }
@@ -442,13 +443,18 @@ function oss_setting_post_thumbnail_style( $html, $post_id, $post_image_id )
         if (!empty($images) && isset($images[1])) {
             $images[1] = array_unique($images[1]);
             foreach ($images[1] as $item) {
-                if((strpos($item, $option['upload_url_path']) !== false) && (strpos($item, $option['style']) === false)){
-                    $html = str_replace($item, $item . $option['style'], $html);
+                if((strpos($item, esc_attr($option['upload_url_path'])) !== false) && (strpos($item, esc_attr($option['style'])) === false)){
+                    $html = str_replace($item, $item . esc_attr($option['style']), $html);
                 }
             }
         }
     }
     return $html;
+}
+
+function oss_get_option($key)
+{
+    return esc_attr(get_option($key));
 }
 
 // 在导航栏“设置”中添加条目
@@ -481,7 +487,7 @@ function oss_setting_page()
     }
 
     if (!empty($_POST) and $_POST['type'] == 'aliyun_oss_all') {
-        $sync = oss_read_dir_queue(get_home_path() . get_option('upload_path'));
+        $sync = oss_read_dir_queue(get_home_path() . oss_get_option('upload_path'));
         foreach ($sync as $k) {
             oss_file_upload($k['key'], $k['filepath']);
         }
@@ -519,13 +525,8 @@ function oss_setting_page()
     }
 
     $oss_options = get_option('oss_options', true);
-    $upload_path = get_option('upload_path');
-    $upload_url_path = get_option('upload_url_path');
 
-    $oss_bucket = esc_attr($oss_options['bucket']);
     $oss_regional = esc_attr($oss_options['regional']);
-    $oss_accessKeyId = esc_attr($oss_options['accessKeyId']);
-    $oss_accessKeySecret = esc_attr($oss_options['accessKeySecret']);
 
     $oss_is_internal = esc_attr($oss_options['is_internal']);
     $oss_is_internal =  ($oss_is_internal == 'true');
@@ -537,7 +538,6 @@ function oss_setting_page()
     $oss_nolocalsaving = ($oss_nolocalsaving == 'true');
     $oss_update_file_name = esc_attr($oss_options['update_file_name']);
 
-    $oss_style = esc_attr($oss_options['style']);
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? 'https://' : 'http://';
     ?>
     <div class="wrap" style="margin: 10px;">
@@ -551,7 +551,7 @@ function oss_setting_page()
                         <legend>Bucket名称</legend>
                     </th>
                     <td>
-                        <input type="text" name="bucket" value="<?php echo $oss_bucket; ?>" size="50" placeholder="请填写Bucket名称"/>
+                        <input type="text" name="bucket" value="<?php echo esc_attr($oss_options['bucket']); ?>" size="50" placeholder="请填写Bucket名称"/>
 
                         <p>请先访问 <a href="https://oss.console.aliyun.com/bucket" target="_blank">阿里云控制台</a> 创建<code>Bucket</code>，再填写以上内容。</p>
                     </td>
@@ -599,14 +599,14 @@ function oss_setting_page()
                     <th>
                         <legend>AccessKeyId</legend>
                     </th>
-                    <td><input type="text" name="accessKeyId" value="<?php echo $oss_accessKeyId; ?>" size="50" placeholder="AccessKeyId"/></td>
+                    <td><input type="text" name="accessKeyId" value="<?php echo esc_attr($oss_options['accessKeyId']); ?>" size="50" placeholder="AccessKeyId"/></td>
                 </tr>
                 <tr>
                     <th>
                         <legend>AccessKeySecret</legend>
                     </th>
                     <td>
-                        <input type="password" name="accessKeySecret" value="<?php echo $oss_accessKeySecret; ?>" size="50" placeholder="AccessKeySecret"/>
+                        <input type="password" name="accessKeySecret" value="<?php echo esc_attr($oss_options['accessKeySecret']); ?>" size="50" placeholder="AccessKeySecret"/>
                     </td>
                 </tr>
                 <tr>
@@ -654,7 +654,7 @@ function oss_setting_page()
                         <legend>本地文件夹</legend>
                     </th>
                     <td>
-                        <input type="text" name="upload_path" value="<?php echo $upload_path; ?>" size="50" placeholder="请输入上传文件夹"/>
+                        <input type="text" name="upload_path" value="<?php echo oss_get_option('upload_path'); ?>" size="50" placeholder="请输入上传文件夹"/>
                         <p>附件在服务器上的存储位置，例如： <code>wp-content/uploads</code> （注意不要以“/”开头和结尾），根目录请输入<code>.</code>。</p>
                     </td>
                 </tr>
@@ -663,7 +663,7 @@ function oss_setting_page()
                         <legend>URL前缀</legend>
                     </th>
                     <td>
-                        <input type="text" name="upload_url_path" value="<?php echo $upload_url_path; ?>" size="50" placeholder="请输入URL前缀"/>
+                        <input type="text" name="upload_url_path" value="<?php echo oss_get_option('upload_url_path'); ?>" size="50" placeholder="请输入URL前缀"/>
 
                         <p><b>注意：</b></p>
 
@@ -679,7 +679,7 @@ function oss_setting_page()
                         <legend>图片处理</legend>
                     </th>
                     <td>
-                        <input type="text" name="style" value="<?php echo $oss_style; ?>" size="50" placeholder="请输入图片处理样式，留空表示不处理"/>
+                        <input type="text" name="style" value="<?php echo esc_attr($oss_options['style']); ?>" size="50" placeholder="请输入图片处理样式，留空表示不处理"/>
 
                         <p><b>获取样式：</b></p>
 
@@ -740,7 +740,7 @@ function oss_setting_page()
                     </th>
                     <input type="hidden" name="type" value="aliyun_oss_replace">
                     <td>
-                        <input type="submit" name="submit"  class="button button-secondary" value="开始替换"/>
+                        <input type="submit" name="submit" class="button button-secondary" value="开始替换"/>
                         <p><b>注意：如果是首次替换，请注意备份！此功能会替换文章以及设置的特色图片（题图）等使用的资源链接</b></p>
                     </td>
                 </tr>
