@@ -587,6 +587,7 @@ function oss_setting_page()
                             <option value="oss-eu-west-1" <?php if ($oss_regional == 'oss-eu-west-1') {echo ' selected="selected"';}?>>英国（伦敦）</option>
                             <option value="oss-me-east-1" <?php if ($oss_regional == 'oss-me-east-1') {echo ' selected="selected"';}?>>中东东部 1 （迪拜）</option>
                             <option value="oss-ap-southeast-6" <?php if ($oss_regional == 'oss-ap-southeast-6') {echo ' selected="selected"';}?>>菲律宾（马尼拉）</option>
+                            <option value="oss-ap-southeast-7" <?php if ($oss_regional == 'oss-ap-southeast-7') {echo ' selected="selected"';}?>>泰国（曼谷）</option>
                             <option value="oss-cn-hzfinance" <?php if ($oss_regional == 'oss-cn-hzfinance') {echo ' selected="selected"';}?>>杭州金融云公网</option>
                             <option value="oss-cn-shanghai-finance-1-pub" <?php if ($oss_regional == 'oss-cn-shanghai-finance-1-pub') {echo ' selected="selected"';}?>>上海金融云公网</option>
                             <option value="oss-cn-szfinance" <?php if ($oss_regional == 'oss-cn-szfinance') {echo ' selected="selected"';}?>>深圳金融云公网</option>
