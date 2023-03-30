@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
-Version: 1.3.1
+Version: 1.3.2
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache 2.0
@@ -17,7 +17,7 @@ require_once 'sdk/vendor/autoload.php';
 use OSS\OssClient;
 use OSS\Core\OssException;
 
-define('OSS_VERSION', '1.3.1');
+define('OSS_VERSION', '1.3.2');
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 if (!function_exists('get_home_path')) {
@@ -565,6 +565,8 @@ function oss_setting_page()
                             <option value="oss-accelerate-overseas" <?php if ($oss_regional == 'oss-accelerate-overseas') {echo ' selected="selected"';}?>>非中国内地加速</option>
                             <option value="oss-cn-hangzhou" <?php if ($oss_regional == 'oss-cn-hangzhou') {echo ' selected="selected"';}?>>华东 1（杭州）</option>
                             <option value="oss-cn-shanghai" <?php if ($oss_regional == 'oss-cn-shanghai') {echo ' selected="selected"';}?>>华东 2（上海）</option>
+                            <option value="oss-cn-nanjing" <?php if ($oss_regional == 'oss-cn-nanjing') {echo ' selected="selected"';}?>>华东5（南京-本地地域）</option>
+                            <option value="	oss-cn-fuzhou" <?php if ($oss_regional == '	oss-cn-fuzhou') {echo ' selected="selected"';}?>>华东6（福州-本地地域）</option>
                             <option value="oss-cn-qingdao" <?php if ($oss_regional == 'oss-cn-qingdao') {echo ' selected="selected"';}?>>华北 1（青岛）</option>
                             <option value="oss-cn-beijing" <?php if ($oss_regional == 'oss-cn-beijing') {echo ' selected="selected"';}?>>华北 2（北京）</option>
                             <option value="oss-cn-zhangjiakou" <?php if ($oss_regional == 'oss-cn-zhangjiakou') {echo ' selected="selected"';}?>>华北 3（张家口）</option>
@@ -585,7 +587,7 @@ function oss_setting_page()
                             <option value="oss-ap-south-1" <?php if ($oss_regional == 'oss-ap-south-1') {echo ' selected="selected"';}?>>印度（孟买）</option>
                             <option value="oss-eu-central-1" <?php if ($oss_regional == 'oss-eu-central-1') {echo ' selected="selected"';}?>>德国（法兰克福）</option>
                             <option value="oss-eu-west-1" <?php if ($oss_regional == 'oss-eu-west-1') {echo ' selected="selected"';}?>>英国（伦敦）</option>
-                            <option value="oss-me-east-1" <?php if ($oss_regional == 'oss-me-east-1') {echo ' selected="selected"';}?>>中东东部 1 （迪拜）</option>
+                            <option value="oss-me-east-1" <?php if ($oss_regional == 'oss-me-east-1') {echo ' selected="selected"';}?>>阿联酋（迪拜）</option>
                             <option value="oss-ap-southeast-6" <?php if ($oss_regional == 'oss-ap-southeast-6') {echo ' selected="selected"';}?>>菲律宾（马尼拉）</option>
                             <option value="oss-ap-southeast-7" <?php if ($oss_regional == 'oss-ap-southeast-7') {echo ' selected="selected"';}?>>泰国（曼谷）</option>
                             <option value="oss-cn-hzfinance" <?php if ($oss_regional == 'oss-cn-hzfinance') {echo ' selected="selected"';}?>>杭州金融云公网</option>
