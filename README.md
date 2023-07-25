@@ -20,6 +20,7 @@
 * [x] 支持同步历史附件到阿里云对象存储OSS
 * [x] 支持阿里云OSS图片处理
 * [x] 支持上传文件自动重命名
+* [x] 支持使用RAM操作
 
 ## 安装
 
@@ -55,4 +56,4 @@ GitHub 下载节点：[https://github.com/sy-records/aliyun-oss-wordpress/releas
 
 ![设置页面](screenshot-1.png)
 
-![update-wordpress-posts-photos.png](screenshot-2.png
+![update-wordpress-posts-photos.png](screenshot-2.png)

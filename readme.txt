@@ -74,6 +74,7 @@ License URI: http://www.apache.org/licenses/LICENSE-2.0.html
 
 = 1.4.0 =
 * 支持 WordPress 6.3 版本
+* 支持 RAM 操作 OSS
 
 = 1.3.2 =
 * 添加地域

@@ -16,12 +16,36 @@ require_once 'sdk/vendor/autoload.php';
 
 use OSS\OssClient;
 use OSS\Core\OssException;
+use OSS\Credentials\CredentialsProvider;
+use AlibabaCloud\Credentials\Credential;
+use OSS\Credentials\StaticCredentialsProvider;
 
 define('OSS_VERSION', '1.4.0');
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 if (!function_exists('get_home_path')) {
     require_once(ABSPATH . 'wp-admin/includes/file.php');
+}
+
+class OSSCredentialsWrapper implements CredentialsProvider
+{
+    /**
+     * @var \OSS\Credentials\Credentials
+     */
+    private $wrapper;
+
+    public function __construct($wrapper)
+    {
+        $this->wrapper = $wrapper;
+    }
+
+    public function getCredentials()
+    {
+        $ak = $this->wrapper->getAccessKeyId();
+        $sk = $this->wrapper->getAccessKeySecret();
+        $token = $this->wrapper->getSecurityToken();
+        return new StaticCredentialsProvider($ak, $sk, $token);
+    }
 }
 
 // 初始化选项
@@ -40,6 +64,7 @@ function oss_set_options()
         'upload_url_path' => '', // URL前缀
         'style' => '', // 图片处理
         'update_file_name' => 'false', // 是否重命名文件名
+        'role_name' => '' // 角色名称
     );
     add_option('oss_options', $options, '', 'yes');
 }
@@ -47,9 +72,25 @@ function oss_set_options()
 function oss_get_client()
 {
     $oss_opt = get_option('oss_options', true);
+    $roleName = esc_attr($oss_opt['role_name'] ?? '');
+    $endpoint = oss_get_bucket_endpoint($oss_opt);
+
+    if (!empty($roleName)) {
+        $ecsRamRole = new Credential([
+            // 填写Credential类型，固定值为ecs_ram_role。
+            'type' => 'ecs_ram_role',
+            // 填写角色名称。
+            'role_name' => $roleName,
+        ]);
+        $providerWarpper = new OSSCredentialsWrapper($ecsRamRole);
+        $provider = $providerWarpper->getCredentials();
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? 'https://' : 'http://';
+        $config = ['provider' => $provider, 'endpoint'=> $protocol . $endpoint];
+        return new OssClient($config);
+    }
+
     $accessKeyId = esc_attr($oss_opt['accessKeyId']);
     $accessKeySecret = esc_attr($oss_opt['accessKeySecret']);
-    $endpoint = oss_get_bucket_endpoint($oss_opt);
     return new OssClient($accessKeyId, $accessKeySecret, $endpoint);
 }
 
@@ -475,6 +516,7 @@ function oss_setting_page()
     if (!empty($_POST) and $_POST['type'] == 'oss_set') {
         $options['bucket'] = isset($_POST['bucket']) ? sanitize_text_field($_POST['bucket']) : '';
         $options['regional'] = isset($_POST['regional']) ? sanitize_text_field($_POST['regional']) : '';
+        $options['role_name'] = isset($_POST['role_name']) ? sanitize_text_field($_POST['role_name']) : '';
         $options['accessKeyId'] = isset($_POST['accessKeyId']) ? sanitize_text_field($_POST['accessKeyId']) : '';
         $options['accessKeySecret'] = isset($_POST['accessKeySecret']) ? sanitize_text_field($_POST['accessKeySecret']) : '';
         $options['is_internal'] = isset($_POST['is_internal']) ? 'true' : 'false';
@@ -560,9 +602,11 @@ function oss_setting_page()
                     <th>
                         <legend>区域</legend>
                     </th>
-                    <td><select name="regional">
+                    <td>
+                        <select name="regional">
                             <option value="oss-accelerate" <?php if ($oss_regional == 'oss-accelerate') {echo ' selected="selected"';}?>>全球加速</option>
                             <option value="oss-accelerate-overseas" <?php if ($oss_regional == 'oss-accelerate-overseas') {echo ' selected="selected"';}?>>非中国内地加速</option>
+                            <option value="oss-rg-china-mainland" <?php if ($oss_regional == 'oss-rg-china-mainland') {echo ' selected="selected"';}?>>无地域属性（中国内地）</option>
                             <option value="oss-cn-hangzhou" <?php if ($oss_regional == 'oss-cn-hangzhou') {echo ' selected="selected"';}?>>华东 1（杭州）</option>
                             <option value="oss-cn-shanghai" <?php if ($oss_regional == 'oss-cn-shanghai') {echo ' selected="selected"';}?>>华东 2（上海）</option>
                             <option value="oss-cn-nanjing" <?php if ($oss_regional == 'oss-cn-nanjing') {echo ' selected="selected"';}?>>华东5（南京-本地地域）</option>
@@ -597,6 +641,15 @@ function oss_setting_page()
                         </select>
                         <p>请选择您创建的<code>Bucket</code>所在区域</p>
                     </td>
+                </tr>
+                <tr>
+                  <th>
+                    <legend>Role Name</legend>
+                  </th>
+                  <td>
+                    <input type="text" name="role_name" value="<?php echo esc_attr($oss_options['role_name'] ?? ''); ?>" size="50" placeholder="RAM角色名称"/>
+                    <p>在ECS上通过实例RAM角色的方式访问OSS，非必填，如需使用请填写，不懂请保持为空。</p>
+                  </td>
                 </tr>
                 <tr>
                     <th>
