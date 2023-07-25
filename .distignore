@@ -1,0 +1,4 @@
+/.git
+/.github
+/.distignore
+/sdk/composer.lock
