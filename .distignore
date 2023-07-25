@@ -2,3 +2,5 @@
 /.github
 /.distignore
 /sdk/composer.lock
+/sdk/vendor/aliyuncs/oss-sdk-php/samples/
+/sdk/vendor/aliyuncs/oss-sdk-php/tests/
