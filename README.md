@@ -56,4 +56,4 @@ GitHub 下载节点：[https://github.com/sy-records/aliyun-oss-wordpress/releas
 
 ![设置页面](screenshot-1.png)
 
-![update-wordpress-posts-photos.png](screenshot-2.png
+![update-wordpress-posts-photos.png](screenshot-2.png)

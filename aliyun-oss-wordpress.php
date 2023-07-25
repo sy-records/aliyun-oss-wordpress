@@ -27,7 +27,7 @@ if (!function_exists('get_home_path')) {
     require_once(ABSPATH . 'wp-admin/includes/file.php');
 }
 
-class AlibabaCloudCredentialsWrapper implements CredentialsProvider
+class OSSCredentialsWrapper implements CredentialsProvider
 {
     /**
      * @var \OSS\Credentials\Credentials
@@ -82,7 +82,7 @@ function oss_get_client()
             // 填写角色名称。
             'role_name' => $roleName,
         ]);
-        $providerWarpper = new AlibabaCloudCredentialsWrapper($ecsRamRole);
+        $providerWarpper = new OSSCredentialsWrapper($ecsRamRole);
         $provider = $providerWarpper->getCredentials();
         $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? 'https://' : 'http://';
         $config = ['provider' => $provider, 'endpoint'=> $protocol . $endpoint];
