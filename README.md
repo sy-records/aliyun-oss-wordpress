@@ -8,6 +8,7 @@
 [![contributors](https://img.shields.io/github/contributors/sy-records/aliyun-oss-wordpress?color=blue)](https://github.com/sy-records/aliyun-oss-wordpress/graphs/contributors)
 [![plugin stars](https://img.shields.io/wordpress/plugin/stars/oss-aliyun)](https://wordpress.org/plugins/oss-aliyun/)
 [![plugin installs](https://img.shields.io/wordpress/plugin/installs/oss-aliyun)](https://wordpress.org/plugins/oss-aliyun/)
+[![Deploy to WordPress.org](https://github.com/sy-records/aliyun-oss-wordpress/actions/workflows/deploy.yml/badge.svg)](https://github.com/sy-records/aliyun-oss-wordpress/actions/workflows/deploy.yml)
 
 ## 插件特色
 
@@ -54,4 +55,4 @@ GitHub 下载节点：[https://github.com/sy-records/aliyun-oss-wordpress/releas
 
 ![设置页面](screenshot-1.png)
 
-![update-wordpress-posts-photos.png](screenshot-2.png)
+![update-wordpress-posts-photos.png](screenshot-2.png
