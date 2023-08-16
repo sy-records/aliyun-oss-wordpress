@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
-Version: 1.4.0
+Version: 1.4.1
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache 2.0
@@ -20,7 +20,7 @@ use OSS\Credentials\CredentialsProvider;
 use AlibabaCloud\Credentials\Credential;
 use OSS\Credentials\StaticCredentialsProvider;
 
-define('OSS_VERSION', '1.4.0');
+define('OSS_VERSION', '1.4.1');
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 if (!function_exists('get_home_path')) {
@@ -82,8 +82,8 @@ function oss_get_client()
             // 填写角色名称。
             'role_name' => $roleName,
         ]);
-        $providerWarpper = new OSSCredentialsWrapper($ecsRamRole);
-        $provider = $providerWarpper->getCredentials();
+        $providerWrapper = new OSSCredentialsWrapper($ecsRamRole);
+        $provider = $providerWrapper->getCredentials();
         $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? 'https://' : 'http://';
         $config = ['provider' => $provider, 'endpoint'=> $protocol . $endpoint];
         return new OssClient($config);
@@ -142,7 +142,7 @@ function oss_file_upload($object, $file, $no_local_file = false)
 function oss_is_delete_local_file()
 {
     $oss_options = get_option('oss_options', true);
-    return (esc_attr($oss_options['nolocalsaving']) == 'true');
+    return esc_attr($oss_options['nolocalsaving']) == 'true';
 }
 
 /**
@@ -243,11 +243,6 @@ function oss_upload_attachments($metadata)
     return $metadata;
 }
 
-//避免上传插件/主题时出现同步到oss的情况
-if (substr_count($_SERVER['REQUEST_URI'], '/update.php') <= 0) {
-    add_filter('wp_handle_upload', 'oss_upload_attachments', 50);
-}
-
 /**
  * 上传图片的缩略图
  */
@@ -272,7 +267,7 @@ function oss_upload_thumbs($metadata)
             $file = str_replace('./', '', $file);
         }
 
-        oss_file_upload($object, $file, (esc_attr($oss_options['nolocalsaving']) == 'true'));
+        oss_file_upload($object, $file, esc_attr($oss_options['nolocalsaving']) == 'true');
     }
     //上传所有缩略图
     if (!empty($metadata['sizes'])) {
@@ -300,15 +295,36 @@ function oss_upload_thumbs($metadata)
             $file = $file_path . $val['file'];
 
             //执行上传操作
-            oss_file_upload($object, $file, (esc_attr($oss_options['nolocalsaving']) == 'true'));
+            oss_file_upload($object, $file, esc_attr($oss_options['nolocalsaving']) == 'true');
         }
     }
     return $metadata;
 }
 
+/**
+ * @param $override
+ * @return mixed
+ */
+function oss_save_image_editor_file($override)
+{
+    add_filter('wp_update_attachment_metadata', 'oss_image_editor_file_do');
+    return $override;
+}
+
+/**
+ * @param $metadata
+ * @return mixed
+ */
+function oss_image_editor_file_do($metadata)
+{
+    return oss_upload_thumbs($metadata);
+}
+
 //避免上传插件/主题时出现同步到oss的情况
 if (substr_count($_SERVER['REQUEST_URI'], '/update.php') <= 0) {
+    add_filter('wp_handle_upload', 'oss_upload_attachments', 50);
     add_filter('wp_generate_attachment_metadata', 'oss_upload_thumbs', 100);
+    add_filter('wp_save_image_editor_file', 'oss_save_image_editor_file', 101);
 }
 
 /**
@@ -559,7 +575,7 @@ function oss_setting_page()
         update_option('oss_options', $options);
 
         $upload_path = sanitize_text_field(trim(stripslashes($_POST['upload_path']), '/'));
-        $upload_path = ($upload_path == '') ? ('wp-content/uploads') : ($upload_path);
+        $upload_path = $upload_path == '' ? 'wp-content/uploads' : $upload_path;
         update_option('upload_path', $upload_path);
         $upload_url_path = sanitize_text_field(trim(stripslashes($_POST['upload_url_path']), '/'));
         update_option('upload_url_path', $upload_url_path);
