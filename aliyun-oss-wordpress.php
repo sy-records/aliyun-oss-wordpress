@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
-Version: 1.4.1
+Version: 1.4.2
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache 2.0
@@ -20,7 +20,7 @@ use OSS\Credentials\CredentialsProvider;
 use AlibabaCloud\Credentials\Credential;
 use OSS\Credentials\StaticCredentialsProvider;
 
-define('OSS_VERSION', '1.4.1');
+define('OSS_VERSION', '1.4.2');
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 if (!function_exists('get_home_path')) {
@@ -53,7 +53,7 @@ register_activation_hook(__FILE__, 'oss_set_options');
 // 初始化选项
 function oss_set_options()
 {
-    $options = array(
+    $options = [
         'bucket' => '',
         'regional' => 'oss-cn-shanghai',
         'accessKeyId' => '',
@@ -65,7 +65,7 @@ function oss_set_options()
         'style' => '', // 图片处理
         'update_file_name' => 'false', // 是否重命名文件名
         'role_name' => '' // 角色名称
-    );
+    ];
     add_option('oss_options', $options, '', 'yes');
 }
 
@@ -214,14 +214,16 @@ function oss_delete_oss_files(array $files)
 function oss_upload_attachments($metadata)
 {
     $mime_types = get_allowed_mime_types();
-    $image_mime_types = array(
+    $image_mime_types = [
         $mime_types['jpg|jpeg|jpe'],
         $mime_types['gif'],
         $mime_types['png'],
         $mime_types['bmp'],
         $mime_types['tiff|tif'],
+        $mime_types['webp'],
         $mime_types['ico'],
-    );
+        $mime_types['heic'],
+    ];
     // 例如mp4等格式 上传后根据配置选择是否删除 删除后媒体库会显示默认图片 点开内容是正常的
     // 图片在缩略图处理
     if (!in_array($metadata['type'], $image_mime_types)) {
@@ -334,7 +336,7 @@ if (substr_count($_SERVER['REQUEST_URI'], '/update.php') <= 0) {
 function oss_delete_remote_attachment($post_id)
 {
     // 获取图片类附件的meta信息
-    $meta = wp_get_attachment_metadata( $post_id );
+    $meta = wp_get_attachment_metadata($post_id);
 
     if (!empty($meta['file'])) {
         $deleteObjects = [];
@@ -348,17 +350,13 @@ function oss_delete_remote_attachment($post_id)
 
         $deleteObjects[] = str_replace("\\", '/', $file_path);
 
-//        $oss_options = get_option('oss_options', true);
-//        $is_nothumb = (esc_attr($oss_options['nothumb']) == 'false');
-//        if ($is_nothumb) {
-            // 删除缩略图
-            if (!empty($meta['sizes'])) {
-                foreach ($meta['sizes'] as $val) {
-                    $size_file = dirname($file_path) . '/' . $val['file'];
-                    $deleteObjects[] = str_replace("\\", '/', $size_file);
-                }
+        // 删除缩略图
+        if (!empty($meta['sizes'])) {
+            foreach ($meta['sizes'] as $val) {
+                $size_file = dirname($file_path) . '/' . $val['file'];
+                $deleteObjects[] = str_replace("\\", '/', $size_file);
             }
-//        }
+        }
 
         oss_delete_oss_files($deleteObjects);
     } else {
@@ -388,8 +386,7 @@ add_action('delete_attachment', 'oss_delete_remote_attachment');
 function oss_modefiy_img_url($url, $post_id)
 {
     // 移除 ./ 和 项目根路径
-    $url = str_replace(array('./', get_home_path()), array('', ''), $url);
-    return $url;
+    return str_replace(['./', get_home_path()], '', $url);
 }
 
 if (oss_get_option('upload_path') == '.') {
@@ -409,57 +406,44 @@ function oss_sanitize_file_name($filename)
     }
 }
 
-add_filter( 'sanitize_file_name', 'oss_sanitize_file_name', 10, 1 );
-
-function oss_function_each(&$array)
-{
-    $res = array();
-    $key = key($array);
-    if ($key !== null) {
-        next($array);
-        $res[1] = $res['value'] = $array[$key];
-        $res[0] = $res['key'] = $key;
-    } else {
-        $res = false;
-    }
-    return $res;
-}
+add_filter('sanitize_file_name', 'oss_sanitize_file_name', 10, 1);
 
 /**
- * @param $dir
+ * @param $homePath
+ * @param $uploadPath
  * @return array
  */
-function oss_read_dir_queue($dir)
+function oss_read_dir_queue($homePath, $uploadPath)
 {
-    $dd = [];
-    if (isset($dir)) {
-        $files = array();
-        $queue = array($dir);
-        while ($data = oss_function_each($queue)) {
-            $path = $data['value'];
-            if (is_dir($path) && $handle = opendir($path)) {
-                while ($file = readdir($handle)) {
-                    if ($file == '.' || $file == '..') {
-                        continue;
-                    }
-                    $files[] = $real_path = $path . '/' . $file;
-                    if (is_dir($real_path)) {
-                        $queue[] = $real_path;
-                    }
-                    //echo explode(oss_get_option('upload_path'),$path)[1];
-                }
-            }
-            closedir($handle);
-        }
-        $upload_path = oss_get_option('upload_path');
-        foreach ($files as $v) {
-            if (!is_dir($v)) {
-                $dd[] = ['filepath' => $v, 'key' =>  '/' . $upload_path . explode($upload_path, $v)[1]];
+    $dir = $homePath . $uploadPath;
+    $dirsToProcess = new SplQueue();
+    $dirsToProcess->enqueue([$dir, '']);
+    $foundFiles = [];
+
+    while (!$dirsToProcess->isEmpty()) {
+        [$currentDir, $relativeDir] = $dirsToProcess->dequeue();
+
+        foreach (new DirectoryIterator($currentDir) as $fileInfo) {
+            if ($fileInfo->isDot()) continue;
+
+            $filepath = $fileInfo->getRealPath();
+
+            // Compute the relative path of the file/directory with respect to upload path
+            $currentRelativeDir = "{$relativeDir}/{$fileInfo->getFilename()}";
+
+            if ($fileInfo->isDir()) {
+                $dirsToProcess->enqueue([$filepath, $currentRelativeDir]);
+            } else {
+                // Add file path and key to the result array
+                $foundFiles[] = [
+                    'filepath' => $filepath,
+                    'key' => '/' . $uploadPath . $currentRelativeDir
+                ];
             }
         }
     }
 
-    return $dd;
+    return $foundFiles;
 }
 
 // 在插件列表页添加设置按钮
@@ -492,7 +476,7 @@ function oss_setting_content_style($content)
 }
 
 add_filter('post_thumbnail_html', 'oss_setting_post_thumbnail_style', 10, 3);
-function oss_setting_post_thumbnail_style( $html, $post_id, $post_image_id )
+function oss_setting_post_thumbnail_style($html, $post_id, $post_image_id)
 {
     $option = get_option('oss_options');
     if (!empty($option['style']) && has_post_thumbnail()) {
@@ -509,6 +493,52 @@ function oss_setting_post_thumbnail_style( $html, $post_id, $post_image_id )
     return $html;
 }
 
+function oss_get_regional($regional)
+{
+    $options = [
+        'oss-accelerate' => '全球加速',
+        'oss-accelerate-overseas' => '非中国内地加速',
+        'oss-rg-china-mainland' => '无地域属性（中国内地）',
+        'oss-cn-hangzhou' => '华东 1（杭州）',
+        'oss-cn-shanghai' => '华东 2（上海）',
+        'oss-cn-nanjing' => '华东5（南京-本地地域）',
+        'oss-cn-fuzhou' => '华东6（福州-本地地域）',
+        'oss-cn-qingdao' => '华北 1（青岛）',
+        'oss-cn-beijing' => '华北 2（北京）',
+        'oss-cn-zhangjiakou' => '华北 3（张家口）',
+        'oss-cn-huhehaote' => '华北 5（呼和浩特）',
+        'oss-cn-wulanchabu' => '华北 6（乌兰察布）',
+        'oss-cn-shenzhen' => '华南 1（深圳）',
+        'oss-cn-heyuan' => '华南 2（河源）',
+        'oss-cn-guangzhou' => '华南 3（广州）',
+        'oss-cn-chengdu' => '西南 1（成都）',
+        'oss-cn-hongkong' => '中国（香港）',
+        'oss-us-west-1' => '美国西部 1 （硅谷）',
+        'oss-us-east-1' => '美国东部 1 （弗吉尼亚）',
+        'oss-ap-southeast-1' => '新加坡',
+        'oss-ap-southeast-2' => '澳大利亚（悉尼）',
+        'oss-ap-southeast-3' => '马来西亚（吉隆坡）',
+        'oss-ap-southeast-5' => '印度尼西亚（雅加达）',
+        'oss-ap-northeast-1' => '日本（东京）',
+        'oss-ap-south-1' => '印度（孟买）',
+        'oss-eu-central-1' => '德国（法兰克福）',
+        'oss-eu-west-1' => '英国（伦敦）',
+        'oss-me-east-1' => '阿联酋（迪拜）',
+        'oss-ap-southeast-6' => '菲律宾（马尼拉）',
+        'oss-ap-southeast-7' => '泰国（曼谷）',
+        'oss-cn-hzfinance' => '杭州金融云公网',
+        'oss-cn-shanghai-finance-1-pub' => '上海金融云公网',
+        'oss-cn-szfinance' => '深圳金融云公网',
+        'cn-beijing-finance-1' => '北京金融云公网',
+    ];
+
+    foreach ($options as $value => $text) {
+        $selected = ($regional == $value) ? 'selected="selected"' : '';
+        echo "<option value=\"{$value}\" {$selected}>{$text}</option>";
+    }
+}
+
+
 function oss_get_option($key)
 {
     return esc_attr(get_option($key));
@@ -517,7 +547,7 @@ function oss_get_option($key)
 // 在导航栏“设置”中添加条目
 function oss_add_setting_page()
 {
-    add_options_page('阿里云OSS设置', '阿里云OSS设置', 'manage_options', __FILE__, 'oss_setting_page');
+    add_options_page('阿里云 OSS', '阿里云 OSS', 'manage_options', __FILE__, 'oss_setting_page');
 }
 
 add_action('admin_menu', 'oss_add_setting_page');
@@ -528,7 +558,7 @@ function oss_setting_page()
     if (!current_user_can('manage_options')) {
         wp_die('Insufficient privileges!');
     }
-    $options = array();
+    $options = [];
     if (!empty($_POST) and $_POST['type'] == 'oss_set') {
         $options['bucket'] = isset($_POST['bucket']) ? sanitize_text_field($_POST['bucket']) : '';
         $options['regional'] = isset($_POST['regional']) ? sanitize_text_field($_POST['regional']) : '';
@@ -545,11 +575,11 @@ function oss_setting_page()
     }
 
     if (!empty($_POST) and $_POST['type'] == 'aliyun_oss_all') {
-        $sync = oss_read_dir_queue(get_home_path() . oss_get_option('upload_path'));
-        foreach ($sync as $k) {
-            oss_file_upload($k['key'], $k['filepath']);
+        $files = oss_read_dir_queue(get_home_path(), cos_get_option('upload_path'));
+        foreach ($files as $file) {
+            oss_file_upload($file['key'], $file['filepath']);
         }
-        echo '<div class="updated"><p><strong>本次操作成功同步' . count($sync) . '个文件</strong></p></div>';
+        echo '<div class="updated"><p><strong>本次操作成功同步' . count($files) . '个文件</strong></p></div>';
     }
 
     // 替换数据库链接
@@ -560,17 +590,17 @@ function oss_setting_page()
         global $wpdb;
         $posts_name = $wpdb->prefix .'posts';
         // 文章内容
-        $posts_result = $wpdb->query("UPDATE $posts_name SET post_content = REPLACE( post_content, '$old_url', '$new_url') ");
+        $posts_result = $wpdb->query("UPDATE $posts_name SET post_content = REPLACE(post_content, '$old_url', '$new_url')");
 
         // 修改题图之类的
         $postmeta_name = $wpdb->prefix .'postmeta';
-        $postmeta_result = $wpdb->query("UPDATE $postmeta_name SET meta_value = REPLACE( meta_value, '$old_url', '$new_url') ");
+        $postmeta_result = $wpdb->query("UPDATE $postmeta_name SET meta_value = REPLACE(meta_value, '$old_url', '$new_url')");
 
         echo '<div class="updated"><p><strong>替换成功！共替换文章内链'.$posts_result.'条、题图链接'.$postmeta_result.'条！</strong></p></div>';
     }
 
     // 若$options不为空数组，则更新数据
-    if ($options !== array()) {
+    if ($options !== []) {
         //更新数据库
         update_option('oss_options', $options);
 
@@ -599,10 +629,10 @@ function oss_setting_page()
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? 'https://' : 'http://';
     ?>
     <div class="wrap" style="margin: 10px;">
-        <h1>阿里云 OSS 设置 <span style="font-size: 13px;">当前版本：<?php echo OSS_VERSION; ?></span></h1>
+        <h1>阿里云 OSS <span style="font-size: 13px;">当前版本：<?php echo OSS_VERSION; ?></span></h1>
         <p>如果觉得此插件对你有所帮助，不妨到 <a href="https://github.com/sy-records/aliyun-oss-wordpress" target="_blank">GitHub</a> 上点个<code>Star</code>，<code>Watch</code>关注更新；<a href="https://go.qq52o.me/qm/ccs" target="_blank">欢迎加入云存储插件交流群，QQ群号：887595381</a>；</p>
         <hr/>
-        <form name="form1" method="post" action="<?php echo wp_nonce_url('./options-general.php?page=' . OSS_BASEFOLDER . '/aliyun-oss-wordpress.php'); ?>">
+        <form name="form1" method="post">
             <table class="form-table">
                 <tr>
                     <th>
@@ -620,40 +650,7 @@ function oss_setting_page()
                     </th>
                     <td>
                         <select name="regional">
-                            <option value="oss-accelerate" <?php if ($oss_regional == 'oss-accelerate') {echo ' selected="selected"';}?>>全球加速</option>
-                            <option value="oss-accelerate-overseas" <?php if ($oss_regional == 'oss-accelerate-overseas') {echo ' selected="selected"';}?>>非中国内地加速</option>
-                            <option value="oss-rg-china-mainland" <?php if ($oss_regional == 'oss-rg-china-mainland') {echo ' selected="selected"';}?>>无地域属性（中国内地）</option>
-                            <option value="oss-cn-hangzhou" <?php if ($oss_regional == 'oss-cn-hangzhou') {echo ' selected="selected"';}?>>华东 1（杭州）</option>
-                            <option value="oss-cn-shanghai" <?php if ($oss_regional == 'oss-cn-shanghai') {echo ' selected="selected"';}?>>华东 2（上海）</option>
-                            <option value="oss-cn-nanjing" <?php if ($oss_regional == 'oss-cn-nanjing') {echo ' selected="selected"';}?>>华东5（南京-本地地域）</option>
-                            <option value="	oss-cn-fuzhou" <?php if ($oss_regional == '	oss-cn-fuzhou') {echo ' selected="selected"';}?>>华东6（福州-本地地域）</option>
-                            <option value="oss-cn-qingdao" <?php if ($oss_regional == 'oss-cn-qingdao') {echo ' selected="selected"';}?>>华北 1（青岛）</option>
-                            <option value="oss-cn-beijing" <?php if ($oss_regional == 'oss-cn-beijing') {echo ' selected="selected"';}?>>华北 2（北京）</option>
-                            <option value="oss-cn-zhangjiakou" <?php if ($oss_regional == 'oss-cn-zhangjiakou') {echo ' selected="selected"';}?>>华北 3（张家口）</option>
-                            <option value="oss-cn-huhehaote" <?php if ($oss_regional == 'oss-cn-huhehaote') {echo ' selected="selected"';}?>>华北 5（呼和浩特）</option>
-                            <option value="oss-cn-wulanchabu" <?php if ($oss_regional == 'oss-cn-wulanchabu') {echo ' selected="selected"';}?>>华北 6（乌兰察布）</option>
-                            <option value="oss-cn-shenzhen" <?php if ($oss_regional == 'oss-cn-shenzhen') {echo ' selected="selected"';}?>>华南 1（深圳）</option>
-                            <option value="oss-cn-heyuan" <?php if ($oss_regional == 'oss-cn-heyuan') {echo ' selected="selected"';}?>>华南 2（河源）</option>
-                            <option value="oss-cn-guangzhou" <?php if ($oss_regional == 'oss-cn-guangzhou') {echo ' selected="selected"';}?>>华南 3（广州）</option>
-                            <option value="oss-cn-chengdu" <?php if ($oss_regional == 'oss-cn-chengdu') {echo ' selected="selected"';}?>>西南 1（成都）</option>
-                            <option value="oss-cn-hongkong" <?php if ($oss_regional == 'oss-cn-hongkong') {echo ' selected="selected"';}?>>中国（香港）</option>
-                            <option value="oss-us-west-1" <?php if ($oss_regional == 'oss-us-west-1') {echo ' selected="selected"';}?>>美国西部 1 （硅谷）</option>
-                            <option value="oss-us-east-1" <?php if ($oss_regional == 'oss-us-east-1') {echo ' selected="selected"';}?>>美国东部 1 （弗吉尼亚）</option>
-                            <option value="oss-ap-southeast-1" <?php if ($oss_regional == 'oss-ap-southeast-1') {echo ' selected="selected"';}?>>新加坡</option>
-                            <option value="oss-ap-southeast-2" <?php if ($oss_regional == 'oss-ap-southeast-2') {echo ' selected="selected"';}?>>澳大利亚（悉尼）</option>
-                            <option value="oss-ap-southeast-3" <?php if ($oss_regional == 'oss-ap-southeast-3') {echo ' selected="selected"';}?>>马来西亚（吉隆坡）</option>
-                            <option value="oss-ap-southeast-5" <?php if ($oss_regional == 'oss-ap-southeast-5') {echo ' selected="selected"';}?>>印度尼西亚（雅加达）</option>
-                            <option value="oss-ap-northeast-1" <?php if ($oss_regional == 'oss-ap-northeast-1') {echo ' selected="selected"';}?>>日本（东京）</option>
-                            <option value="oss-ap-south-1" <?php if ($oss_regional == 'oss-ap-south-1') {echo ' selected="selected"';}?>>印度（孟买）</option>
-                            <option value="oss-eu-central-1" <?php if ($oss_regional == 'oss-eu-central-1') {echo ' selected="selected"';}?>>德国（法兰克福）</option>
-                            <option value="oss-eu-west-1" <?php if ($oss_regional == 'oss-eu-west-1') {echo ' selected="selected"';}?>>英国（伦敦）</option>
-                            <option value="oss-me-east-1" <?php if ($oss_regional == 'oss-me-east-1') {echo ' selected="selected"';}?>>阿联酋（迪拜）</option>
-                            <option value="oss-ap-southeast-6" <?php if ($oss_regional == 'oss-ap-southeast-6') {echo ' selected="selected"';}?>>菲律宾（马尼拉）</option>
-                            <option value="oss-ap-southeast-7" <?php if ($oss_regional == 'oss-ap-southeast-7') {echo ' selected="selected"';}?>>泰国（曼谷）</option>
-                            <option value="oss-cn-hzfinance" <?php if ($oss_regional == 'oss-cn-hzfinance') {echo ' selected="selected"';}?>>杭州金融云公网</option>
-                            <option value="oss-cn-shanghai-finance-1-pub" <?php if ($oss_regional == 'oss-cn-shanghai-finance-1-pub') {echo ' selected="selected"';}?>>上海金融云公网</option>
-                            <option value="oss-cn-szfinance" <?php if ($oss_regional == 'oss-cn-szfinance') {echo ' selected="selected"';}?>>深圳金融云公网</option>
-                            <option value="cn-beijing-finance-1" <?php if ($oss_regional == 'cn-beijing-finance-1') {echo ' selected="selected"';}?>>北京金融云公网</option>
+                            <?php oss_get_regional($oss_regional); ?>
                         </select>
                         <p>请选择您创建的<code>Bucket</code>所在区域</p>
                     </td>
@@ -686,7 +683,7 @@ function oss_setting_page()
                         <legend>是否使用内网传输</legend>
                     </th>
                     <td>
-                        <input type="checkbox" name="is_internal" <?php if ($oss_is_internal) { echo 'checked="checked"'; } ?> />
+                        <input type="checkbox" name="is_internal" <?php echo $oss_is_internal ? 'checked="checked"' : ''; ?> />
                         <p>如果你的服务器是在阿里云并且区域和<code>Bucket</code>所在区域一致，请勾选。</p>
                     </td>
                 </tr>
@@ -695,7 +692,7 @@ function oss_setting_page()
                         <legend>不上传缩略图</legend>
                     </th>
                     <td>
-                        <input type="checkbox" name="nothumb" <?php if ($oss_nothumb) { echo 'checked="checked"'; } ?> />
+                        <input type="checkbox" name="nothumb" <?php echo $oss_nothumb ? 'checked="checked"' : ''; ?> />
                         <p>建议不勾选</p>
                     </td>
                 </tr>
@@ -705,7 +702,7 @@ function oss_setting_page()
                     </th>
                     <td>
                         <input type="checkbox"
-                               name="nolocalsaving" <?php if ($oss_nolocalsaving) { echo 'checked="checked"'; } ?> />
+                               name="nolocalsaving" <?php echo $oss_nolocalsaving ? 'checked="checked"' : ''; ?> />
                         <p>建议不勾选</p>
                     </td>
                 </tr>
@@ -715,9 +712,9 @@ function oss_setting_page()
                     </th>
                     <td>
                         <select name="update_file_name">
-                            <option <?php if ($oss_update_file_name == 'false') {echo 'selected="selected"';} ?> value="false">不处理</option>
-                            <option <?php if ($oss_update_file_name == 'md5') {echo 'selected="selected"';} ?> value="md5">MD5</option>
-                            <option <?php if ($oss_update_file_name == 'time') {echo 'selected="selected"';} ?> value="time">时间戳+随机数</option>
+                            <option <?php echo $oss_update_file_name == 'false' ? 'selected="selected"' : ''; ?> value="false">不处理</option>
+                            <option <?php echo $oss_update_file_name == 'md5' ? 'selected="selected"' : ''; ?> value="md5">MD5</option>
+                            <option <?php echo $oss_update_file_name == 'time' ? 'selected="selected"' : ''; ?> value="time">时间戳+随机数</option>
                         </select>
                     </td>
                 </tr>
@@ -773,7 +770,7 @@ function oss_setting_page()
             </table>
             <input type="hidden" name="type" value="oss_set">
         </form>
-        <form name="form2" method="post" action="<?php echo wp_nonce_url('./options-general.php?page=' . OSS_BASEFOLDER . '/aliyun-oss-wordpress.php'); ?>">
+        <form method="post">
             <table class="form-table">
                 <tr>
                     <th>
@@ -788,7 +785,7 @@ function oss_setting_page()
             </table>
         </form>
         <hr>
-        <form name="form3" method="post" action="<?php echo wp_nonce_url('./options-general.php?page=' . OSS_BASEFOLDER . '/aliyun-oss-wordpress.php'); ?>">
+        <form method="post">
             <table class="form-table">
                 <tr>
                     <th>
