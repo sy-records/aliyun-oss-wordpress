@@ -538,7 +538,6 @@ function oss_get_regional($regional)
     }
 }
 
-
 function oss_get_option($key)
 {
     return esc_attr(get_option($key));
