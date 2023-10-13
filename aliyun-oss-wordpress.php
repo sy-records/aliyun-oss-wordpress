@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
-Version: 1.4.2
+Version: 1.4.3
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache 2.0
@@ -20,7 +20,7 @@ use OSS\Credentials\CredentialsProvider;
 use AlibabaCloud\Credentials\Credential;
 use OSS\Credentials\StaticCredentialsProvider;
 
-define('OSS_VERSION', '1.4.2');
+define('OSS_VERSION', '1.4.3');
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 if (!function_exists('get_home_path')) {
@@ -98,9 +98,10 @@ function oss_get_bucket_endpoint($oss_option)
 {
     $oss_regional = esc_attr($oss_option['regional']);
     if ($oss_option['is_internal'] == 'true') {
-        return $oss_regional . '-internal.aliyuncs.com';
+        return "{$oss_regional}-internal.aliyuncs.com";
     }
-    return $oss_regional . '.aliyuncs.com';
+
+    return "{$oss_regional}.aliyuncs.com";
 }
 
 function oss_get_bucket_name()
@@ -274,7 +275,7 @@ function oss_upload_thumbs($metadata)
     //上传所有缩略图
     if (!empty($metadata['sizes'])) {
         //是否需要上传缩略图
-        $nothumb = (esc_attr($oss_options['nothumb']) == 'true');
+        $nothumb = esc_attr($oss_options['nothumb']) == 'true';
         //如果禁止上传缩略图，就不用继续执行了
         if ($nothumb) {
             return $metadata;
@@ -398,7 +399,7 @@ function oss_sanitize_file_name($filename)
     $oss_options = get_option('oss_options');
     switch ($oss_options['update_file_name']) {
         case 'md5':
-            return  md5($filename) . '.' . pathinfo($filename, PATHINFO_EXTENSION);
+            return md5($filename) . '.' . pathinfo($filename, PATHINFO_EXTENSION);
         case 'time':
             return date('YmdHis', current_time('timestamp'))  . mt_rand(100, 999) . '.' . pathinfo($filename, PATHINFO_EXTENSION);
         default:
@@ -501,8 +502,9 @@ function oss_get_regional($regional)
         'oss-rg-china-mainland' => '无地域属性（中国内地）',
         'oss-cn-hangzhou' => '华东 1（杭州）',
         'oss-cn-shanghai' => '华东 2（上海）',
-        'oss-cn-nanjing' => '华东5（南京-本地地域）',
-        'oss-cn-fuzhou' => '华东6（福州-本地地域）',
+        'oss-cn-nanjing' => '华东 5（南京-本地地域）',
+        'oss-cn-fuzhou' => '华东 6（福州-本地地域）',
+        'oss-cn-wuhan' => '华中 1（武汉-本地地域）',
         'oss-cn-qingdao' => '华北 1（青岛）',
         'oss-cn-beijing' => '华北 2（北京）',
         'oss-cn-zhangjiakou' => '华北 3（张家口）',
@@ -519,13 +521,14 @@ function oss_get_regional($regional)
         'oss-ap-southeast-2' => '澳大利亚（悉尼）',
         'oss-ap-southeast-3' => '马来西亚（吉隆坡）',
         'oss-ap-southeast-5' => '印度尼西亚（雅加达）',
+        'oss-ap-southeast-6' => '菲律宾（马尼拉）',
+        'oss-ap-southeast-7' => '泰国（曼谷）',
         'oss-ap-northeast-1' => '日本（东京）',
+        'oss-ap-northeast-2' => '韩国（首尔）',
         'oss-ap-south-1' => '印度（孟买）',
         'oss-eu-central-1' => '德国（法兰克福）',
         'oss-eu-west-1' => '英国（伦敦）',
         'oss-me-east-1' => '阿联酋（迪拜）',
-        'oss-ap-southeast-6' => '菲律宾（马尼拉）',
-        'oss-ap-southeast-7' => '泰国（曼谷）',
         'oss-cn-hzfinance' => '杭州金融云公网',
         'oss-cn-shanghai-finance-1-pub' => '上海金融云公网',
         'oss-cn-szfinance' => '深圳金融云公网',
@@ -571,10 +574,15 @@ function oss_setting_page()
         $options['upload_url_path'] = isset($_POST['upload_url_path']) ? sanitize_text_field(stripslashes($_POST['upload_url_path'])) : '';
         $options['style'] = isset($_POST['style']) ? sanitize_text_field($_POST['style']) : '';
         $options['update_file_name'] = isset($_POST['update_file_name']) ? sanitize_text_field($_POST['update_file_name']) : 'false';
+
+        if ($options['regional'] === 'oss-rg-china-mainland' && $options['is_internal'] === 'true') {
+            echo '<div class="error"><p><strong>无地域属性不支持内网，请重新填写配置！</strong></p></div>';
+            $options = [];
+        }
     }
 
     if (!empty($_POST) and $_POST['type'] == 'aliyun_oss_all') {
-        $files = oss_read_dir_queue(get_home_path(), cos_get_option('upload_path'));
+        $files = oss_read_dir_queue(get_home_path(), oss_get_option('upload_path'));
         foreach ($files as $file) {
             oss_file_upload($file['key'], $file['filepath']);
         }
@@ -616,13 +624,13 @@ function oss_setting_page()
     $oss_regional = esc_attr($oss_options['regional']);
 
     $oss_is_internal = esc_attr($oss_options['is_internal']);
-    $oss_is_internal =  ($oss_is_internal == 'true');
+    $oss_is_internal = $oss_is_internal == 'true';
 
     $oss_nothumb = esc_attr($oss_options['nothumb']);
-    $oss_nothumb = ($oss_nothumb == 'true');
+    $oss_nothumb = $oss_nothumb == 'true';
 
     $oss_nolocalsaving = esc_attr($oss_options['nolocalsaving']);
-    $oss_nolocalsaving = ($oss_nolocalsaving == 'true');
+    $oss_nolocalsaving = $oss_nolocalsaving == 'true';
     $oss_update_file_name = esc_attr($oss_options['update_file_name']);
 
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? 'https://' : 'http://';
