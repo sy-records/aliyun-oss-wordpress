@@ -254,6 +254,7 @@ function oss_upload_thumbs($metadata)
     //获取上传路径
     $wp_uploads = wp_upload_dir();
     $basedir = $wp_uploads['basedir'];
+    $upload_path = oss_get_option('upload_path');
 
     //获取oss插件的配置信息
     $oss_options = get_option('oss_options', true);
@@ -263,7 +264,6 @@ function oss_upload_thumbs($metadata)
     if (!empty($metadata['file'])) {
         // Maybe there is a problem with the old version
         $file = $basedir . '/' . $metadata['file'];
-        $upload_path = oss_get_option('upload_path');
         if ($upload_path != '.') {
             $path_array = explode($upload_path, $file);
             if (count($path_array) >= 2) {
@@ -434,7 +434,7 @@ function oss_read_dir_queue($homePath, $uploadPath)
     $foundFiles = [];
 
     while (!$dirsToProcess->isEmpty()) {
-        [$currentDir, $relativeDir] = $dirsToProcess->dequeue();
+        list($currentDir, $relativeDir) = $dirsToProcess->dequeue();
 
         foreach (new DirectoryIterator($currentDir) as $fileInfo) {
             if ($fileInfo->isDot()) continue;
