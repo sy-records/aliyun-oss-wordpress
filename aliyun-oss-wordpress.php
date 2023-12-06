@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
-Version: 1.4.6
+Version: 1.4.7
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache2.0
@@ -15,12 +15,11 @@ if (!defined('ABSPATH')) {
 require_once 'sdk/vendor/autoload.php';
 
 use OSS\OssClient;
-use OSS\Core\OssException;
 use OSS\Credentials\CredentialsProvider;
 use AlibabaCloud\Credentials\Credential;
 use OSS\Credentials\StaticCredentialsProvider;
 
-define('OSS_VERSION', '1.4.6');
+define('OSS_VERSION', '1.4.7');
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 if (!function_exists('get_home_path')) {
@@ -123,9 +122,9 @@ function oss_file_upload($object, $file, $no_local_file = false)
     }
     $bucket = oss_get_bucket_name();
     $ossClient = oss_get_client();
-    try{
+    try {
         $ossClient->uploadFile($bucket, ltrim($object, '/'), $file);
-    } catch (OssException $e) {
+    } catch (Throwable $e) {
         if (WP_DEBUG) {
             echo 'Error Message: ', $e->getMessage(), PHP_EOL, 'Error Code: ', $e->getCode();
         }
@@ -195,10 +194,15 @@ function oss_delete_oss_file($file)
  */
 function oss_delete_oss_files(array $files)
 {
+    $deleteObjects = [];
+    foreach ($files as $file) {
+        $deleteObjects[] = str_replace(["\\", './'], ['/', ''], $file);
+    }
+
     try {
         $bucket = oss_get_bucket_name();
         $ossClient = oss_get_client();
-        $ossClient->deleteObjects($bucket, $files);
+        $ossClient->deleteObjects($bucket, $deleteObjects);
     } catch (\Throwable $e) {
         if (WP_DEBUG) {
             echo 'Error Message: ', $e->getMessage(), PHP_EOL, 'Error Code: ', $e->getCode();
@@ -346,30 +350,29 @@ function oss_delete_remote_attachment($post_id)
 {
     // 获取图片类附件的meta信息
     $meta = wp_get_attachment_metadata($post_id);
+    $upload_path = oss_get_option('upload_path');
+    if ($upload_path == '') {
+        $upload_path = 'wp-content/uploads';
+    }
 
     if (!empty($meta['file'])) {
         $deleteObjects = [];
 
         // meta['file']的格式为 "2020/01/wp-bg.png"
-        $upload_path = oss_get_option('upload_path');
-        if ($upload_path == '') {
-            $upload_path = 'wp-content/uploads';
-        }
         $file_path = $upload_path . '/' . $meta['file'];
-
-        $deleteObjects[] = str_replace("\\", '/', $file_path);
-
         $dirname = dirname($file_path) . '/';
+
+        $deleteObjects[] = $file_path;
 
         // 超大图原图
         if (!empty($meta['original_image'])) {
-            $deleteObjects[] = ['Key' => str_replace("\\", '/', $dirname . $meta['original_image'])];
+            $deleteObjects[] = $dirname . $meta['original_image'];
         }
 
         // 删除缩略图
         if (!empty($meta['sizes'])) {
             foreach ($meta['sizes'] as $val) {
-                $deleteObjects[] = str_replace("\\", '/', $dirname . $val['file']);
+                $deleteObjects[] = $dirname . $val['file'];
             }
         }
 
@@ -378,7 +381,6 @@ function oss_delete_remote_attachment($post_id)
         // 获取链接删除
         $link = wp_get_attachment_url($post_id);
         if ($link) {
-            $upload_path = oss_get_option('upload_path');
             if ($upload_path != '.') {
                 $file_info = explode($upload_path, $link);
                 if (count($file_info) >= 2) {
@@ -472,17 +474,39 @@ function oss_plugin_action_links($links, $file)
 }
 add_filter('plugin_action_links', 'oss_plugin_action_links', 10, 2);
 
+function oss_custom_image_srcset($sources, $size_array, $image_src, $image_meta, $attachment_id)
+{
+    $option = get_option('oss_options');
+    $style = !empty($option['style']) ? esc_attr($option['style']) : '';
+    $upload_url_path = esc_attr($option['upload_url_path']);
+    if (empty($style)) {
+        return $sources;
+    }
+
+    foreach ($sources as $index => $source) {
+        if (strpos($source['url'], $upload_url_path) !== false && strpos($source['url'], $style) === false) {
+            $sources[$index]['url'] .= $style;
+        }
+    }
+
+    return $sources;
+}
+
+add_filter('wp_calculate_image_srcset', 'oss_custom_image_srcset', 10, 5);
+
 add_filter('the_content', 'oss_setting_content_style');
 function oss_setting_content_style($content)
 {
     $option = get_option('oss_options');
+    $upload_url_path = esc_attr($option['upload_url_path']);
     if (!empty($option['style'])) {
+        $style = esc_attr($option['style']);
         preg_match_all('/<img.*?(?: |\\t|\\r|\\n)?src=[\'"]?(.+?)[\'"]?(?:(?: |\\t|\\r|\\n)+.*?)?>/sim', $content, $images);
         if (!empty($images) && isset($images[1])) {
             $images[1] = array_unique($images[1]);
             foreach ($images[1] as $item) {
-                if((strpos($item, esc_attr($option['upload_url_path'])) !== false) && (strpos($item, esc_attr($option['style'])) === false)){
-                    $content = str_replace($item, $item . esc_attr($option['style']), $content);
+                if (strpos($item, $upload_url_path) !== false && strpos($item, $style) === false) {
+                    $content = str_replace($item, $item . $style, $content);
                 }
             }
         }
@@ -494,13 +518,15 @@ add_filter('post_thumbnail_html', 'oss_setting_post_thumbnail_style', 10, 3);
 function oss_setting_post_thumbnail_style($html, $post_id, $post_image_id)
 {
     $option = get_option('oss_options');
+    $upload_url_path = esc_attr($option['upload_url_path']);
     if (!empty($option['style']) && has_post_thumbnail()) {
+        $style = esc_attr($option['style']);
         preg_match_all('/<img.*?(?: |\\t|\\r|\\n)?src=[\'"]?(.+?)[\'"]?(?:(?: |\\t|\\r|\\n)+.*?)?>/sim', $html, $images);
         if (!empty($images) && isset($images[1])) {
             $images[1] = array_unique($images[1]);
             foreach ($images[1] as $item) {
-                if((strpos($item, esc_attr($option['upload_url_path'])) !== false) && (strpos($item, esc_attr($option['style'])) === false)){
-                    $html = str_replace($item, $item . esc_attr($option['style']), $html);
+                if (strpos($item, $upload_url_path) !== false && strpos($item, $style) === false) {
+                    $html = str_replace($item, $item . $style, $html);
                 }
             }
         }
