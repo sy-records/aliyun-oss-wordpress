@@ -10,6 +10,8 @@
 [![plugin installs](https://img.shields.io/wordpress/plugin/installs/oss-aliyun)](https://wordpress.org/plugins/oss-aliyun/)
 [![Deploy to WordPress.org](https://github.com/sy-records/aliyun-oss-wordpress/actions/workflows/deploy.yml/badge.svg)](https://github.com/sy-records/aliyun-oss-wordpress/actions/workflows/deploy.yml)
 
+> 使用 WordPress Playground 在线预览 [OSS Aliyun](https://wordpress.org/plugins/oss-aliyun/?preview=1) 插件
+
 ## 插件特色
 
 - [x] 可配置是否上传缩略图和是否保留本地备份
@@ -54,6 +56,6 @@ GitHub 下载节点：[https://github.com/sy-records/aliyun-oss-wordpress/releas
 
 ## 插件截图
 
-![设置页面](screenshot-1.png)
+![设置页面](.wordpress-org/screenshot-1.png)
 
-![update-wordpress-posts-photos.png](screenshot-2.png)
+![update-wordpress-posts-photos.png](.wordpress-org/screenshot-2.png)
