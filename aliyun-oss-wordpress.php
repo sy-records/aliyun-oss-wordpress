@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
-Version: 1.4.8
+Version: 1.4.9
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache2.0
@@ -19,7 +19,7 @@ use OSS\Credentials\CredentialsProvider;
 use AlibabaCloud\Credentials\Credential;
 use OSS\Credentials\StaticCredentialsProvider;
 
-define('OSS_VERSION', '1.4.8');
+define('OSS_VERSION', '1.4.9');
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 if (!function_exists('get_home_path')) {
@@ -606,6 +606,11 @@ function oss_setting_page()
     }
     $options = [];
     if (!empty($_POST) and $_POST['type'] == 'oss_set') {
+        $nonce = $_POST['update_oss_config-nonce'] ?? '';
+        if (empty($nonce) || !wp_verify_nonce($nonce, 'update_oss_config')) {
+            wp_die('Illegal requests!');
+        }
+
         $options['bucket'] = isset($_POST['bucket']) ? sanitize_text_field($_POST['bucket']) : '';
         $options['regional'] = isset($_POST['regional']) ? sanitize_text_field($_POST['regional']) : '';
         $options['role_name'] = isset($_POST['role_name']) ? sanitize_text_field($_POST['role_name']) : '';
@@ -635,19 +640,28 @@ function oss_setting_page()
 
     // 替换数据库链接
     if(!empty($_POST) and $_POST['type'] == 'aliyun_oss_replace') {
+        $nonce = $_POST['update_oss_replace-nonce'] ?? '';
+        if (empty($nonce) || !wp_verify_nonce($nonce, 'update_oss_replace')) {
+            wp_die('Illegal requests!');
+        }
+
         $old_url = esc_url_raw($_POST['old_url']);
         $new_url = esc_url_raw($_POST['new_url']);
 
-        global $wpdb;
-        $posts_name = $wpdb->prefix . 'posts';
-        // 文章内容
-        $posts_result = $wpdb->query("UPDATE $posts_name SET post_content = REPLACE(post_content, '$old_url', '$new_url')");
+        if (!empty($old_url) && !empty($new_url)) {
+            global $wpdb;
+            $posts_name = $wpdb->prefix . 'posts';
+            // 文章内容
+            $posts_result = $wpdb->query("UPDATE $posts_name SET post_content = REPLACE(post_content, '$old_url', '$new_url')");
 
-        // 修改题图之类的
-        $postmeta_name = $wpdb->prefix . 'postmeta';
-        $postmeta_result = $wpdb->query("UPDATE $postmeta_name SET meta_value = REPLACE(meta_value, '$old_url', '$new_url')");
+            // 修改题图之类的
+            $postmeta_name = $wpdb->prefix . 'postmeta';
+            $postmeta_result = $wpdb->query("UPDATE $postmeta_name SET meta_value = REPLACE(meta_value, '$old_url', '$new_url')");
 
-        echo '<div class="updated"><p><strong>替换成功！共替换文章内链'.$posts_result.'条、题图链接'.$postmeta_result.'条！</strong></p></div>';
+            echo '<div class="updated"><p><strong>替换成功！共替换文章内链'.$posts_result.'条、题图链接'.$postmeta_result.'条！</strong></p></div>';
+        } else {
+            echo '<div class="error"><p><strong>请填写资源链接URL地址！</strong></p></div>';
+        }
     }
 
     // 若$options不为空数组，则更新数据
@@ -683,7 +697,7 @@ function oss_setting_page()
         <h1>阿里云 OSS <span style="font-size: 13px;">当前版本：<?php echo OSS_VERSION; ?></span></h1>
         <p>如果觉得此插件对你有所帮助，不妨到 <a href="https://github.com/sy-records/aliyun-oss-wordpress" target="_blank">GitHub</a> 上点个<code>Star</code>，<code>Watch</code>关注更新；<a href="https://go.qq52o.me/qm/ccs" target="_blank">欢迎加入云存储插件交流群，QQ群号：887595381</a>；</p>
         <hr/>
-        <form name="form1" method="post">
+        <form method="post">
             <table class="form-table">
                 <tr>
                     <th>
@@ -817,6 +831,7 @@ function oss_setting_page()
                 <tr>
                     <th><legend>保存/更新选项</legend></th>
                     <td><input type="submit" class="button button-primary" value="保存更改"/></td>
+                    <?php wp_nonce_field('update_oss_config', 'update_oss_config-nonce'); ?>
                 </tr>
             </table>
             <input type="hidden" name="type" value="oss_set">
@@ -859,6 +874,7 @@ function oss_setting_page()
                         <legend></legend>
                     </th>
                     <input type="hidden" name="type" value="aliyun_oss_replace">
+                    <?php wp_nonce_field('update_oss_replace', 'update_oss_replace-nonce'); ?>
                     <td>
                         <input type="submit" class="button button-secondary" value="开始替换"/>
                         <p><b>注意：如果是首次替换，请注意备份！此功能会替换文章以及设置的特色图片（题图）等使用的资源链接</b></p>
