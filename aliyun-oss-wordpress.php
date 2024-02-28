@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
-Version: 1.4.9
+Version: 1.4.10
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache2.0
@@ -19,7 +19,7 @@ use OSS\Credentials\CredentialsProvider;
 use AlibabaCloud\Credentials\Credential;
 use OSS\Credentials\StaticCredentialsProvider;
 
-define('OSS_VERSION', '1.4.9');
+define('OSS_VERSION', '1.4.10');
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 if (!function_exists('get_home_path')) {
@@ -111,6 +111,24 @@ function oss_get_bucket_name()
 
 /**
  * @param string $object
+ * @return array
+ */
+function oss_get_file_meta($object)
+{
+    try {
+        $ossClient = oss_get_client();
+        $bucket = oss_get_bucket_name();
+        return $ossClient->getObjectMeta($bucket, $object);
+    } catch (\Throwable $e) {
+        if (WP_DEBUG) {
+            echo 'Error Message: ', $e->getMessage(), PHP_EOL, 'Error Code: ', $e->getCode();
+        }
+        return ['content-length' => 0];
+    }
+}
+
+/**
+ * @param string $object
  * @param string $file
  * @param bool $no_local_file
  */
@@ -124,7 +142,7 @@ function oss_file_upload($object, $file, $no_local_file = false)
     $ossClient = oss_get_client();
     try {
         $ossClient->uploadFile($bucket, ltrim($object, '/'), $file);
-    } catch (Throwable $e) {
+    } catch (\Throwable $e) {
         if (WP_DEBUG) {
             echo 'Error Message: ', $e->getMessage(), PHP_EOL, 'Error Code: ', $e->getCode();
         }
@@ -493,6 +511,23 @@ function oss_custom_image_srcset($sources, $size_array, $image_src, $image_meta,
 }
 
 add_filter('wp_calculate_image_srcset', 'oss_custom_image_srcset', 10, 5);
+
+add_filter('wp_prepare_attachment_for_js', 'oss_wp_prepare_attachment_for_js', 10);
+function oss_wp_prepare_attachment_for_js($response)
+{
+    if (empty($response['filesizeInBytes']) || empty($response['filesizeHumanReadable'])) {
+        $upload_url_path = get_option('upload_url_path');
+        $upload_path = get_option('upload_path');
+        $object = str_replace($upload_url_path, $upload_path, $response['url']);
+        $meta = oss_get_file_meta($object);
+        if (!empty($meta['content-length'])) {
+            $response['filesizeInBytes'] = $meta['content-length'];
+            $response['filesizeHumanReadable'] = size_format($meta['content-length']);
+        }
+    }
+
+    return $response;
+}
 
 add_filter('the_content', 'oss_setting_content_style');
 function oss_setting_content_style($content)
