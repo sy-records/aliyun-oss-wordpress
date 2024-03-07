@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
-Version: 1.4.10
+Version: 1.4.11
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache2.0
@@ -19,7 +19,7 @@ use OSS\Credentials\CredentialsProvider;
 use AlibabaCloud\Credentials\Credential;
 use OSS\Credentials\StaticCredentialsProvider;
 
-define('OSS_VERSION', '1.4.10');
+define('OSS_VERSION', '1.4.11');
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 if (!function_exists('get_home_path')) {
@@ -687,11 +687,11 @@ function oss_setting_page()
             global $wpdb;
             $posts_name = $wpdb->prefix . 'posts';
             // 文章内容
-            $posts_result = $wpdb->query("UPDATE $posts_name SET post_content = REPLACE(post_content, '$old_url', '$new_url')");
+            $posts_result = $wpdb->query($wpdb->prepare("UPDATE $posts_name SET post_content = REPLACE(post_content, '%s', '%s')", [$old_url, $new_url]));
 
             // 修改题图之类的
             $postmeta_name = $wpdb->prefix . 'postmeta';
-            $postmeta_result = $wpdb->query("UPDATE $postmeta_name SET meta_value = REPLACE(meta_value, '$old_url', '$new_url')");
+            $postmeta_result = $wpdb->query($wpdb->prepare("UPDATE $postmeta_name SET meta_value = REPLACE(meta_value, '%s', '%s')", [$old_url, $new_url]));
 
             echo '<div class="updated"><p><strong>替换成功！共替换文章内链'.$posts_result.'条、题图链接'.$postmeta_result.'条！</strong></p></div>';
         } else {
