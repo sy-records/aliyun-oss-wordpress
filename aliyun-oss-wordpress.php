@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
-Version: 1.4.11
+Version: 1.4.12
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache2.0
@@ -19,7 +19,7 @@ use OSS\Credentials\CredentialsProvider;
 use AlibabaCloud\Credentials\Credential;
 use OSS\Credentials\StaticCredentialsProvider;
 
-define('OSS_VERSION', '1.4.11');
+define('OSS_VERSION', '1.4.12');
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 if (!function_exists('get_home_path')) {
@@ -63,7 +63,8 @@ function oss_set_options()
         'upload_url_path' => '', // URL前缀
         'style' => '', // 图片处理
         'update_file_name' => 'false', // 是否重命名文件名
-        'role_name' => '' // 角色名称
+        'role_name' => '', // 角色名称
+        'origin_protect' => '',
     ];
     add_option('oss_options', $options, '', 'yes');
 }
@@ -486,7 +487,7 @@ function oss_plugin_action_links($links, $file)
 {
     if ($file == plugin_basename(dirname(__FILE__) . '/aliyun-oss-wordpress.php')) {
         $links[] = '<a href="options-general.php?page=' . OSS_BASEFOLDER . '/aliyun-oss-wordpress.php">设置</a>';
-        $links[] = '<a href="https://qq52o.me/sponsor.html" target="_blank">赞赏</a>';
+        $links[] = '<a href="https://donate.qq52o.me" target="_blank">Donate</a>';
     }
     return $links;
 }
@@ -625,6 +626,91 @@ function oss_get_option($key)
     return esc_attr(get_option($key));
 }
 
+$oss_options = get_option('oss_options', true);
+if (!empty($oss_options['origin_protect']) && esc_attr($oss_options['origin_protect']) === 'on' && !empty(esc_attr($oss_options['style']))) {
+    add_filter('wp_get_attachment_url', 'oss_add_suffix_to_attachment_url', 10, 2);
+    add_filter('wp_get_attachment_thumb_url', 'oss_add_suffix_to_attachment_url', 10, 2);
+    add_filter('wp_get_original_image_url', 'oss_add_suffix_to_attachment_url', 10, 2);
+    add_filter('wp_prepare_attachment_for_js', 'oss_add_suffix_to_attachment', 10, 2);
+    add_filter('image_get_intermediate_size', 'oss_add_suffix_for_media_send_to_editor');
+}
+
+/**
+ * @param string $url
+ * @param int $post_id
+ * @return string
+ */
+function oss_add_suffix_to_attachment_url($url, $post_id)
+{
+    if (oss_is_image_type($url)) {
+        $url .= oss_get_image_style();
+    }
+
+    return $url;
+}
+
+/**
+ * @param array $response
+ * @param array $attachment
+ * @return array
+ */
+function oss_add_suffix_to_attachment($response, $attachment)
+{
+    if ($response['type'] != 'image') {
+        return $response;
+    }
+
+    $style = oss_get_image_style();
+    if (!empty($response['sizes'])) {
+        foreach ($response['sizes'] as $size_key => $size_file) {
+            if (oss_is_image_type($size_file['url'])) {
+                $response['sizes'][$size_key]['url'] .= $style;
+            }
+        }
+    }
+
+    if(!empty($response['originalImageURL'])) {
+        if (oss_is_image_type($response['originalImageURL'])) {
+            $response['originalImageURL'] .= $style;
+        }
+    }
+
+    return $response;
+}
+
+/**
+ * @param array $data
+ * @return array
+ */
+function oss_add_suffix_for_media_send_to_editor($data)
+{
+    // https://github.com/WordPress/wordpress-develop/blob/43d2455dc68072fdd43c3c800cc8c32590f23cbe/src/wp-includes/media.php#L239
+    if (oss_is_image_type($data['file'])) {
+        $data['file'] .= oss_get_image_style();
+    }
+
+    return $data;
+}
+
+/**
+ * @param string $url
+ * @return bool
+ */
+function oss_is_image_type($url)
+{
+    return (bool) preg_match('/\.(jpg|jpeg|jpe|gif|png|bmp|webp|heic|heif｜svg)$/i', $url);
+}
+
+/**
+ * @return string
+ */
+function oss_get_image_style()
+{
+    $oss_options = get_option('oss_options', true);
+
+    return esc_attr($oss_options['style']);
+}
+
 // 在导航栏“设置”中添加条目
 function oss_add_setting_page()
 {
@@ -658,6 +744,7 @@ function oss_setting_page()
         $options['upload_url_path'] = isset($_POST['upload_url_path']) ? sanitize_text_field(stripslashes($_POST['upload_url_path'])) : '';
         $options['style'] = isset($_POST['style']) ? sanitize_text_field($_POST['style']) : '';
         $options['update_file_name'] = isset($_POST['update_file_name']) ? sanitize_text_field($_POST['update_file_name']) : 'false';
+        $options['origin_protect'] = isset($_POST['origin_protect']) ? sanitize_text_field($_POST['origin_protect']) : 'off';
 
         if ($options['regional'] === 'oss-rg-china-mainland' && $options['is_internal'] === 'true') {
             echo '<div class="error"><p><strong>无地域属性不支持内网，请重新填写配置！</strong></p></div>';
@@ -725,6 +812,7 @@ function oss_setting_page()
     $oss_nolocalsaving = esc_attr($oss_options['nolocalsaving']);
     $oss_nolocalsaving = $oss_nolocalsaving == 'true';
     $oss_update_file_name = esc_attr($oss_options['update_file_name']);
+    $oss_origin_protect = esc_attr($oss_options['origin_protect'] ?? 'off') !== 'off' ? 'checked="checked"' : '';
 
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? 'https://' : 'http://';
 ?>
@@ -801,8 +889,7 @@ function oss_setting_page()
                         <legend>不在本地保留备份</legend>
                     </th>
                     <td>
-                        <input type="checkbox"
-                               name="nolocalsaving" <?php echo $oss_nolocalsaving ? 'checked="checked"' : ''; ?> />
+                        <input type="checkbox" name="nolocalsaving" <?php echo $oss_nolocalsaving ? 'checked="checked"' : ''; ?> />
                         <p>建议不勾选</p>
                     </td>
                 </tr>
@@ -862,6 +949,18 @@ function oss_setting_page()
                         <p>② <code>分隔符</code>为<code>!</code>(感叹号)，<code>规则名称</code>为<code>stylename</code></p>
                         <p>则填写为 <code>!stylename</code></p>
                     </td>
+                </tr>
+                <tr>
+                  <th>
+                    <legend>原图保护</legend>
+                  </th>
+                  <td>
+                    <input type="checkbox" name="origin_protect" <?php echo $oss_origin_protect; ?> />
+
+                    <p>开启原图保护功能后，存储桶中的图片文件仅能以带样式的 URL 进行访问，能够阻止恶意用户对源文件的请求。</p>
+                    <p>使用时请先访问阿里云对象存储控制台<b>开启原图保护</b>并设置<b>图片处理样式</b>！</p>
+                    <p>注：此功能为实验性功能，如遇错误或不可用，请关闭后联系作者反馈。</p>
+                  </td>
                 </tr>
                 <tr>
                     <th><legend>保存/更新选项</legend></th>
