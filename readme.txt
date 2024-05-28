@@ -2,8 +2,8 @@
 Contributors: shenyanzhi
 Donate link: https://qq52o.me/sponsor.html
 Tags: oss, 阿里云, 对象存储, aliyun
-Requires at least: 4.2
-Tested up to: 4.6
+Requires at least: 4.6
+Tested up to: 6.5
 Requires PHP: 7.0
 Stable tag: 1.4.12
 License: Apache2.0
