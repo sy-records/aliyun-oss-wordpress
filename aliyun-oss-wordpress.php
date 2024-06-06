@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
-Version: 1.4.12
+Version: 1.4.13
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache2.0
@@ -19,11 +19,15 @@ use OSS\Credentials\CredentialsProvider;
 use AlibabaCloud\Credentials\Credential;
 use OSS\Credentials\StaticCredentialsProvider;
 
-define('OSS_VERSION', '1.4.12');
+define('OSS_VERSION', '1.4.13');
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 if (!function_exists('get_home_path')) {
-    require_once(ABSPATH . 'wp-admin/includes/file.php');
+    require_once ABSPATH . 'wp-admin/includes/file.php';
+}
+
+if (defined('WP_CLI') && WP_CLI) {
+    require_once plugin_dir_path(__FILE__) . 'oss-commands.php';
 }
 
 class OSSCredentialsWrapper implements CredentialsProvider
@@ -121,9 +125,7 @@ function oss_get_file_meta($object)
         $bucket = oss_get_bucket_name();
         return $ossClient->getObjectMeta($bucket, $object);
     } catch (\Throwable $e) {
-        if (WP_DEBUG) {
-            echo 'Error Message: ', $e->getMessage(), PHP_EOL, 'Error Code: ', $e->getCode();
-        }
+        error_log($e->getMessage());
         return ['content-length' => 0];
     }
 }
@@ -132,6 +134,7 @@ function oss_get_file_meta($object)
  * @param string $object
  * @param string $file
  * @param bool $no_local_file
+ * @return bool
  */
 function oss_file_upload($object, $file, $no_local_file = false)
 {
@@ -143,13 +146,14 @@ function oss_file_upload($object, $file, $no_local_file = false)
     $ossClient = oss_get_client();
     try {
         $ossClient->uploadFile($bucket, ltrim($object, '/'), $file);
-    } catch (\Throwable $e) {
-        if (WP_DEBUG) {
-            echo 'Error Message: ', $e->getMessage(), PHP_EOL, 'Error Code: ', $e->getCode();
+        if ($no_local_file) {
+            oss_delete_local_file($file);
         }
-    }
-    if ($no_local_file) {
-        oss_delete_local_file($file);
+
+        return true;
+    } catch (\Throwable $e) {
+        error_log($e->getMessage());
+        return false;
     }
 }
 
@@ -167,7 +171,7 @@ function oss_is_delete_local_file()
 /**
  * 删除本地文件
  *
- * @param $file
+ * @param string $file
  * @return bool
  */
 function oss_delete_local_file($file)
@@ -201,9 +205,7 @@ function oss_delete_oss_file($file)
         $ossClient = oss_get_client();
         $ossClient->deleteObject($bucket, $file);
     } catch (\Throwable $e) {
-        if (WP_DEBUG) {
-            echo 'Error Message: ', $e->getMessage(), PHP_EOL, 'Error Code: ', $e->getCode();
-        }
+        error_log($e->getMessage());
     }
 }
 
@@ -223,9 +225,7 @@ function oss_delete_oss_files(array $files)
         $ossClient = oss_get_client();
         $ossClient->deleteObjects($bucket, $deleteObjects);
     } catch (\Throwable $e) {
-        if (WP_DEBUG) {
-            echo 'Error Message: ', $e->getMessage(), PHP_EOL, 'Error Code: ', $e->getCode();
-        }
+        error_log($e->getMessage());
     }
 }
 
