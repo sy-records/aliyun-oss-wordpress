@@ -4,7 +4,7 @@ Donate link: https://qq52o.me/sponsor.html
 Tags: oss, 阿里云, 对象存储, aliyun
 Requires at least: 4.6
 Tested up to: 6.5
-Requires PHP: 7.0
+Requires PHP: 7.1
 Stable tag: 1.4.13
 License: Apache2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0.html

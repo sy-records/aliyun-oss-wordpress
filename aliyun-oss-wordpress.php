@@ -457,7 +457,7 @@ function oss_read_dir_queue($homePath, $uploadPath)
     $foundFiles = [];
 
     while (!$dirsToProcess->isEmpty()) {
-        list($currentDir, $relativeDir) = $dirsToProcess->dequeue();
+        [$currentDir, $relativeDir] = $dirsToProcess->dequeue();
 
         foreach (new DirectoryIterator($currentDir) as $fileInfo) {
             if ($fileInfo->isDot()) continue;
