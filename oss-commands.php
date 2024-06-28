@@ -96,6 +96,29 @@ class OSS_CLI_Commands
             WP_CLI::error("Failed: {$path}");
         }
     }
+
+    /**
+     * 删除 OSS 中的文件
+     *
+     * ## OPTIONS
+     *
+     * <key>
+     * : 需要删除 OSS 中的文件 key
+     *
+     * ## EXAMPLES
+     *
+     *     wp oss delete-file 2021/01/1.jpg
+     *
+     * @when after_wp_load
+     * @subcommand delete-file
+     */
+    public function delete_file($args, $assoc_args)
+    {
+        [$key] = $args;
+        WP_CLI::line("Deleting file [{$key}] from OSS...");
+
+        oss_delete_oss_file($key);
+    }
 }
 
 WP_CLI::add_command('oss', 'OSS_CLI_Commands', ['shortdesc' => 'Commands used to operate OSS.']);
