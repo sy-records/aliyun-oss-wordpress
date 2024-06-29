@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
-Version: 1.4.13
+Version: 1.4.14
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache2.0
@@ -19,7 +19,7 @@ use OSS\Credentials\CredentialsProvider;
 use AlibabaCloud\Credentials\Credential;
 use OSS\Credentials\StaticCredentialsProvider;
 
-define('OSS_VERSION', '1.4.13');
+define('OSS_VERSION', '1.4.14');
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 if (!function_exists('get_home_path')) {
@@ -237,7 +237,7 @@ function oss_delete_oss_files(array $files)
  */
 function oss_upload_attachments($metadata)
 {
-    $mime_types = get_allowed_mime_types();
+    $mime_types = wp_get_mime_types();
     $image_mime_types = [
         $mime_types['jpg|jpeg|jpe'],
         $mime_types['gif'],
@@ -246,7 +246,6 @@ function oss_upload_attachments($metadata)
         $mime_types['tiff|tif'],
         $mime_types['webp'],
         $mime_types['ico'],
-        $mime_types['heic'],
     ];
     // 例如mp4等格式 上传后根据配置选择是否删除 删除后媒体库会显示默认图片 点开内容是正常的
     // 图片在缩略图处理
