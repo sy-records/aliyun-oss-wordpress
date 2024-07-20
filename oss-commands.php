@@ -6,7 +6,6 @@ if (!class_exists('WP_CLI')) {
 
 class OSS_CLI_Commands
 {
-
     /**
      * 同步文件夹到 OSS
      *

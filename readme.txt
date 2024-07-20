@@ -5,7 +5,7 @@ Tags: oss, 阿里云, 对象存储, aliyun
 Requires at least: 4.6
 Tested up to: 6.6
 Requires PHP: 7.1
-Stable tag: 1.4.14
+Stable tag: 1.4.15
 License: Apache2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0.html
 
@@ -27,9 +27,9 @@ License URI: http://www.apache.org/licenses/LICENSE-2.0.html
 6. 支持同步历史附件到阿里云对象存储 OSS
 7. 支持阿里云 OSS 图片处理
 8. 支持上传文件自动重命名
-9. 支持使用 RAM 操作
+9. 支持使用 ECS 的 RAM 操作
 10. 支持原图保护
-11. 支持 `wp-cli` 命令上传文件
+11. 支持 `wp-cli` 命令上传/删除文件
 12. 插件更多详细介绍和安装：[https://github.com/sy-records/aliyun-oss-wordpress](https://github.com/sy-records/aliyun-oss-wordpress)
 
 ## 其他插件
@@ -75,6 +75,10 @@ License URI: http://www.apache.org/licenses/LICENSE-2.0.html
 二是使用对象存储 OSS 提供的回源功能，配置为镜像方式。如果配置了镜像回源，当用户对该存储空间内一个不存在的文件进行 GET 操作时，OSS 会向回源地址请求这个文件，返回给用户，同时会将该文件存入 OSS。这样就达到了上传到 OSS 的需求。具体配置参考阿里云文档[设置回源规则](https://help.aliyun.com/document_detail/31906.html)
 
 == Changelog ==
+
+= 1.4.15 =
+
+- 将阿里云V1签名升级为V4签名
 
 = 1.4.14 =
 
