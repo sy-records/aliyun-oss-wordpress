@@ -76,7 +76,7 @@ License URI: http://www.apache.org/licenses/LICENSE-2.0.html
 
 == Changelog ==
 
-= 1.4.15 =
+= 1.4.16 =
 
 - 强制 endpoint 使用 https
 

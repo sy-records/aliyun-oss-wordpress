@@ -575,6 +575,11 @@ function oss_setting_post_thumbnail_style($html, $post_id, $post_image_id)
     return $html;
 }
 
+/**
+ * @link https://help.aliyun.com/zh/oss/user-guide/regions-and-endpoints
+ * @param string $regional
+ * @return void
+ */
 function oss_get_regional($regional)
 {
     $options = [
