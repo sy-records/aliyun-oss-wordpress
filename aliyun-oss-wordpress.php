@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
-Version: 1.4.15
+Version: 1.4.16
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache2.0
@@ -19,7 +19,7 @@ use OSS\Credentials\CredentialsProvider;
 use AlibabaCloud\Credentials\Credential;
 use OSS\Credentials\StaticCredentialsProvider;
 
-define('OSS_VERSION', '1.4.15');
+define('OSS_VERSION', '1.4.16');
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 if (!function_exists('get_home_path')) {
@@ -78,7 +78,6 @@ function oss_get_client()
     $oss_options = get_option('oss_options', true);
     $role_name = esc_attr($oss_options['role_name'] ?? '');
     $endpoint = oss_get_bucket_endpoint($oss_options);
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? 'https://' : 'http://';
 
     if (!empty($role_name)) {
         $ecsRamRole = new Credential([
@@ -94,7 +93,7 @@ function oss_get_client()
     }
     $config = [
         'provider'         => $provider,
-        'endpoint'         => $protocol . $endpoint,
+        'endpoint'         => $endpoint,
         'signatureVersion' => OssClient::OSS_SIGNATURE_VERSION_V4,
         'region'           => str_replace('oss-', '', esc_attr($oss_options['regional'])),
     ];
@@ -103,12 +102,12 @@ function oss_get_client()
 
 function oss_get_bucket_endpoint($oss_options)
 {
-    $oss_regional = esc_attr($oss_options['regional']);
+    $regional = esc_attr($oss_options['regional']);
     if ($oss_options['is_internal'] == 'true') {
-        return "{$oss_regional}-internal.aliyuncs.com";
+        return "https://{$regional}-internal.aliyuncs.com";
     }
 
-    return "{$oss_regional}.aliyuncs.com";
+    return "https://{$regional}.aliyuncs.com";
 }
 
 function oss_get_bucket_name()
@@ -576,11 +575,6 @@ function oss_setting_post_thumbnail_style($html, $post_id, $post_image_id)
     return $html;
 }
 
-/**
- * @link https://help.aliyun.com/zh/oss/user-guide/regions-and-endpoints
- * @param string $regional
- * @return void
- */
 function oss_get_regional($regional)
 {
     $options = [
