@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
-Version: 1.4.17
+Version: 1.4.18
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache2.0
@@ -19,7 +19,7 @@ use OSS\Credentials\CredentialsProvider;
 use AlibabaCloud\Credentials\Credential;
 use OSS\Credentials\StaticCredentialsProvider;
 
-define('OSS_VERSION', '1.4.17');
+define('OSS_VERSION', '1.4.18');
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 if (!function_exists('get_home_path')) {
@@ -505,6 +505,9 @@ function oss_custom_image_srcset($sources, $size_array, $image_src, $image_meta,
     }
 
     foreach ($sources as $index => $source) {
+        if (!isset($source['url']) || !oss_is_image_type($source['url'])) {
+            continue;
+        }
         if (strpos($source['url'], $upload_url_path) !== false && strpos($source['url'], $style) === false) {
             $sources[$index]['url'] .= $style;
         }
@@ -543,6 +546,9 @@ function oss_setting_content_style($content)
         if (!empty($images) && isset($images[1])) {
             $images[1] = array_unique($images[1]);
             foreach ($images[1] as $item) {
+                if (!oss_is_image_type($item)) {
+                    continue;
+                }
                 if (strpos($item, $upload_url_path) !== false && strpos($item, $style) === false) {
                     $content = str_replace($item, $item . $style, $content);
                 }
@@ -565,6 +571,9 @@ function oss_setting_post_thumbnail_style($html, $post_id, $post_image_id)
         if (!empty($images) && isset($images[1])) {
             $images[1] = array_unique($images[1]);
             foreach ($images[1] as $item) {
+                if (!oss_is_image_type($item)) {
+                    continue;
+                }
                 if (strpos($item, $upload_url_path) !== false && strpos($item, $style) === false) {
                     $html = str_replace($item, $item . $style, $html);
                 }
@@ -705,7 +714,7 @@ function oss_add_suffix_for_media_send_to_editor($data)
  */
 function oss_is_image_type($url)
 {
-    return (bool) preg_match('/\.(jpg|jpeg|jpe|gif|png|bmp|webp|heic|heif｜svg)$/i', $url);
+    return (bool) preg_match('/\.(jpg|jpeg|jpe|png|bmp|webp|heic|heif|svg)$/i', $url);
 }
 
 /**
