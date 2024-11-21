@@ -82,6 +82,7 @@ License URI: http://www.apache.org/licenses/LICENSE-2.0.html
 
 - Fix sub-site failure to delete remote images
 - Fix `get_option` default value error
+- Fix missing delete backup images
 
 = 1.4.18 =
 
