@@ -400,6 +400,13 @@ function oss_delete_remote_attachment($post_id)
             }
         }
 
+        $backup_sizes = get_post_meta($post_id, '_wp_attachment_backup_sizes', true);
+        if (is_array($backup_sizes)) {
+            foreach ($backup_sizes as $size) {
+                $deleteObjects[] = $dirname . $size['file'];
+            }
+        }
+
         oss_delete_oss_files($deleteObjects);
     } else {
         // 获取链接删除

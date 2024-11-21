@@ -31,7 +31,8 @@ License URI: http://www.apache.org/licenses/LICENSE-2.0.html
 10. 支持原图保护
 11. 支持 `wp-cli` 命令上传/删除文件
 12. 支持多站点
-13. 插件更多详细介绍和安装：[https://github.com/sy-records/aliyun-oss-wordpress](https://github.com/sy-records/aliyun-oss-wordpress)
+13. 支持图片裁剪编辑等操作后的上传
+14. 插件更多详细介绍和安装：[https://github.com/sy-records/aliyun-oss-wordpress](https://github.com/sy-records/aliyun-oss-wordpress)
 
 ## 其他插件
 
