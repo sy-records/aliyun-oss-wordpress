@@ -5,7 +5,7 @@ Tags: oss, 阿里云, 对象存储, aliyun
 Requires at least: 4.6
 Tested up to: 6.7
 Requires PHP: 7.1
-Stable tag: 1.4.18
+Stable tag: 1.4.19
 License: Apache2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0.html
 
@@ -30,7 +30,8 @@ License URI: http://www.apache.org/licenses/LICENSE-2.0.html
 9. 支持使用 ECS 的 RAM 操作
 10. 支持原图保护
 11. 支持 `wp-cli` 命令上传/删除文件
-12. 插件更多详细介绍和安装：[https://github.com/sy-records/aliyun-oss-wordpress](https://github.com/sy-records/aliyun-oss-wordpress)
+12. 支持多站点
+13. 插件更多详细介绍和安装：[https://github.com/sy-records/aliyun-oss-wordpress](https://github.com/sy-records/aliyun-oss-wordpress)
 
 ## 其他插件
 
