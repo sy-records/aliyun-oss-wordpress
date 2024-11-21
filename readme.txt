@@ -77,6 +77,11 @@ License URI: http://www.apache.org/licenses/LICENSE-2.0.html
 
 == Changelog ==
 
+= 1.4.19 =
+
+- Fix sub-site failure to delete remote images
+- Fix `get_option` default value error
+
 = 1.4.18 =
 
 - Images processing ignore gif format
