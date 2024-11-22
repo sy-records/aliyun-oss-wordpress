@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
-Version: 1.4.18
+Version: 1.4.19
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache2.0
@@ -19,7 +19,7 @@ use OSS\Credentials\CredentialsProvider;
 use AlibabaCloud\Credentials\Credential;
 use OSS\Credentials\StaticCredentialsProvider;
 
-define('OSS_VERSION', '1.4.18');
+define('OSS_VERSION', '1.4.19');
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 if (!function_exists('get_home_path')) {
@@ -53,10 +53,9 @@ class OSSCredentialsWrapper implements CredentialsProvider
 
 // 初始化选项
 register_activation_hook(__FILE__, 'oss_set_options');
-// 初始化选项
-function oss_set_options()
+function oss_get_default_options()
 {
-    $options = [
+    return [
         'bucket' => '',
         'regional' => 'oss-cn-shanghai',
         'accessKeyId' => '',
@@ -70,12 +69,17 @@ function oss_set_options()
         'role_name' => '', // 角色名称
         'origin_protect' => '',
     ];
-    add_option('oss_options', $options, '', 'yes');
+}
+
+// 初始化选项
+function oss_set_options()
+{
+    add_option('oss_options', oss_get_default_options(), '', 'yes');
 }
 
 function oss_get_client()
 {
-    $oss_options = get_option('oss_options', true);
+    $oss_options = get_option('oss_options', oss_get_default_options());
     $role_name = esc_attr($oss_options['role_name'] ?? '');
     $endpoint = oss_get_bucket_endpoint($oss_options);
 
@@ -113,7 +117,7 @@ function oss_get_bucket_endpoint($oss_options)
 
 function oss_get_bucket_name()
 {
-    $oss_options = get_option('oss_options', true);
+    $oss_options = get_option('oss_options', oss_get_default_options());
     return $oss_options['bucket'];
 }
 
@@ -167,7 +171,7 @@ function oss_file_upload($object, $file, $no_local_file = false)
  */
 function oss_is_delete_local_file()
 {
-    $oss_options = get_option('oss_options', true);
+    $oss_options = get_option('oss_options', oss_get_default_options());
     return esc_attr($oss_options['nolocalsaving']) == 'true';
 }
 
@@ -286,7 +290,7 @@ function oss_upload_thumbs($metadata)
     $upload_path = oss_get_option('upload_path');
 
     //获取oss插件的配置信息
-    $oss_options = get_option('oss_options', true);
+    $oss_options = get_option('oss_options', oss_get_default_options());
     $no_local_file = esc_attr($oss_options['nolocalsaving']) == 'true';
     $no_thumb = esc_attr($oss_options['nothumb']) == 'true';
 
@@ -369,12 +373,11 @@ if (substr_count($_SERVER['REQUEST_URI'], '/update.php') <= 0) {
  */
 function oss_delete_remote_attachment($post_id)
 {
+    $wp_uploads = wp_upload_dir();
+    $basedir = $wp_uploads['basedir'];
+    $upload_path = str_replace(get_home_path(), '', $basedir);
     // 获取图片类附件的meta信息
     $meta = wp_get_attachment_metadata($post_id);
-    $upload_path = oss_get_option('upload_path');
-    if ($upload_path == '') {
-        $upload_path = 'wp-content/uploads';
-    }
 
     if (!empty($meta['file'])) {
         $deleteObjects = [];
@@ -397,6 +400,13 @@ function oss_delete_remote_attachment($post_id)
             }
         }
 
+        $backup_sizes = get_post_meta($post_id, '_wp_attachment_backup_sizes', true);
+        if (is_array($backup_sizes)) {
+            foreach ($backup_sizes as $size) {
+                $deleteObjects[] = $dirname . $size['file'];
+            }
+        }
+
         oss_delete_oss_files($deleteObjects);
     } else {
         // 获取链接删除
@@ -408,7 +418,7 @@ function oss_delete_remote_attachment($post_id)
                     oss_delete_oss_file($upload_path . end($file_info));
                 }
             } else {
-                $oss_options = get_option('oss_options', true);
+                $oss_options = get_option('oss_options', oss_get_default_options());
                 $oss_upload_url = esc_attr($oss_options['upload_url_path']);
                 $file_info = explode($oss_upload_url, $link);
                 if (count($file_info) >= 2) {
@@ -433,7 +443,7 @@ if (oss_get_option('upload_path') == '.') {
 
 function oss_sanitize_file_name($filename)
 {
-    $oss_options = get_option('oss_options');
+    $oss_options = get_option('oss_options', oss_get_default_options());
     switch ($oss_options['update_file_name']) {
         case 'md5':
             return md5($filename) . '.' . pathinfo($filename, PATHINFO_EXTENSION);
@@ -497,7 +507,7 @@ add_filter('plugin_action_links', 'oss_plugin_action_links', 10, 2);
 
 function oss_custom_image_srcset($sources, $size_array, $image_src, $image_meta, $attachment_id)
 {
-    $option = get_option('oss_options');
+    $option = get_option('oss_options', oss_get_default_options());
     $style = !empty($option['style']) ? esc_attr($option['style']) : '';
     $upload_url_path = esc_attr($option['upload_url_path']);
     if (empty($style)) {
@@ -538,7 +548,7 @@ function oss_wp_prepare_attachment_for_js($response)
 add_filter('the_content', 'oss_setting_content_style');
 function oss_setting_content_style($content)
 {
-    $option = get_option('oss_options');
+    $option = get_option('oss_options', oss_get_default_options());
     $upload_url_path = esc_attr($option['upload_url_path']);
     if (!empty($option['style'])) {
         $style = esc_attr($option['style']);
@@ -563,7 +573,7 @@ function oss_setting_content_style($content)
 add_filter('post_thumbnail_html', 'oss_setting_post_thumbnail_style', 10, 3);
 function oss_setting_post_thumbnail_style($html, $post_id, $post_image_id)
 {
-    $option = get_option('oss_options');
+    $option = get_option('oss_options', oss_get_default_options());
     $upload_url_path = esc_attr($option['upload_url_path']);
     if (!empty($option['style']) && has_post_thumbnail()) {
         $style = esc_attr($option['style']);
@@ -633,7 +643,7 @@ function oss_get_regional($regional)
 
     foreach ($options as $value => $text) {
         $selected = ($regional == $value) ? 'selected="selected"' : '';
-        echo "<option value=\"{$value}\" {$selected}>{$text}</option>";
+        echo "<option value='{$value}' {$selected}>{$text}</option>";
     }
 }
 
@@ -642,7 +652,7 @@ function oss_get_option($key)
     return esc_attr(get_option($key));
 }
 
-$oss_options = get_option('oss_options', true);
+$oss_options = get_option('oss_options', oss_get_default_options());
 if (!empty($oss_options['origin_protect']) && esc_attr($oss_options['origin_protect']) === 'on' && !empty(esc_attr($oss_options['style']))) {
     add_filter('wp_get_attachment_url', 'oss_add_suffix_to_attachment_url', 10, 2);
     add_filter('wp_get_attachment_thumb_url', 'oss_add_suffix_to_attachment_url', 10, 2);
@@ -722,7 +732,7 @@ function oss_is_image_type($url)
  */
 function oss_get_image_style()
 {
-    $oss_options = get_option('oss_options', true);
+    $oss_options = get_option('oss_options', oss_get_default_options());
 
     return esc_attr($oss_options['style']);
 }
@@ -815,7 +825,7 @@ function oss_setting_page()
         echo '<div class="updated"><p><strong>设置已保存！</strong></p></div>';
     }
 
-    $oss_options = get_option('oss_options', true);
+    $oss_options = get_option('oss_options', oss_get_default_options());
 
     $oss_regional = esc_attr($oss_options['regional']);
 
