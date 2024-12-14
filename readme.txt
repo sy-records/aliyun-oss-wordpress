@@ -5,7 +5,7 @@ Tags: oss, 阿里云, 对象存储, aliyun
 Requires at least: 4.6
 Tested up to: 6.7
 Requires PHP: 7.1
-Stable tag: 1.4.19
+Stable tag: 1.4.20
 License: Apache2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0.html
 
@@ -77,6 +77,10 @@ License URI: http://www.apache.org/licenses/LICENSE-2.0.html
 二是使用对象存储 OSS 提供的回源功能，配置为镜像方式。如果配置了镜像回源，当用户对该存储空间内一个不存在的文件进行 GET 操作时，OSS 会向回源地址请求这个文件，返回给用户，同时会将该文件存入 OSS。这样就达到了上传到 OSS 的需求。具体配置参考阿里云文档[设置回源规则](https://help.aliyun.com/document_detail/31906.html)
 
 == Changelog ==
+
+= 1.4.20 =
+
+- Fix origin_protect default value error
 
 = 1.4.19 =
 

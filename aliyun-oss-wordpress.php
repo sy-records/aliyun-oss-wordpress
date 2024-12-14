@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
-Version: 1.4.19
+Version: 1.4.20
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache2.0
@@ -19,7 +19,7 @@ use OSS\Credentials\CredentialsProvider;
 use AlibabaCloud\Credentials\Credential;
 use OSS\Credentials\StaticCredentialsProvider;
 
-define('OSS_VERSION', '1.4.19');
+define('OSS_VERSION', '1.4.20');
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 if (!function_exists('get_home_path')) {
@@ -67,7 +67,7 @@ function oss_get_default_options()
         'style' => '', // 图片处理
         'update_file_name' => 'false', // 是否重命名文件名
         'role_name' => '', // 角色名称
-        'origin_protect' => '',
+        'origin_protect' => 'off',
     ];
 }
 
@@ -431,14 +431,14 @@ function oss_delete_remote_attachment($post_id)
 add_action('delete_attachment', 'oss_delete_remote_attachment');
 
 // 当upload_path为根目录时，需要移除URL中出现的“绝对路径”
-function oss_modefiy_img_url($url, $post_id)
+function oss_modify_img_url($url, $post_id)
 {
     // 移除 ./ 和 项目根路径
     return str_replace(['./', get_home_path()], '', $url);
 }
 
 if (oss_get_option('upload_path') == '.') {
-    add_filter('wp_get_attachment_url', 'oss_modefiy_img_url', 30, 2);
+    add_filter('wp_get_attachment_url', 'oss_modify_img_url', 30, 2);
 }
 
 function oss_sanitize_file_name($filename)
@@ -1005,7 +1005,7 @@ function oss_setting_page()
                     <input type="hidden" name="type" value="aliyun_oss_all">
                     <td>
                         <input type="submit" class="button button-secondary" value="开始同步"/>
-                        <p><b>注意：如果是首次同步，执行时间将会十分十分长（根据你的历史附件数量），有可能会因执行时间过长，页面显示超时或者报错。<br> 所以，建议那些几千上万附件的大神们，考虑官方的 <a target="_blank" rel="nofollow" href="https://help.aliyun.com/knowledge_detail/39628.html">同步工具</a></b></p>
+                        <p><b>注意：如果是首次同步，执行时间将会非常长（根据你的历史附件数量），有可能会因为执行时间过长，导致页面显示超时或者报错。<br> 所以，建议附件数量过多的用户，考虑官方的<a target="_blank" rel="nofollow" href="https://help.aliyun.com/knowledge_detail/39628.html">同步工具</a>或下载 WP-CLI 使用插件内置的命令进行上传。</b></p>
                     </td>
                 </tr>
             </table>
