@@ -99,7 +99,7 @@ function oss_get_client()
     }
 
     $region = !empty($oss_options['origin_region']) ? esc_attr($oss_options['origin_region']) : esc_attr($oss_options['regional']);
-    if (($region == 'oss-accelerate' || $region == 'oss-accelerate-overseas') && empty($oss_options['origin_region'])) {
+    if (in_array($region, ['oss-accelerate', 'oss-accelerate-overseas']) && empty($oss_options['origin_region'])) {
         try {
             $config = [
                 'provider'         => $provider,
@@ -788,11 +788,12 @@ function oss_setting_page()
         $options['is_internal'] = isset($_POST['is_internal']) ? 'true' : 'false';
         $options['nothumb'] = isset($_POST['nothumb']) ? 'true' : 'false';
         $options['nolocalsaving'] = isset($_POST['nolocalsaving']) ? 'true' : 'false';
-        //仅用于插件卸载时比较使用
         $options['upload_url_path'] = isset($_POST['upload_url_path']) ? sanitize_text_field(stripslashes($_POST['upload_url_path'])) : '';
         $options['style'] = isset($_POST['style']) ? sanitize_text_field($_POST['style']) : '';
         $options['update_file_name'] = isset($_POST['update_file_name']) ? sanitize_text_field($_POST['update_file_name']) : 'false';
         $options['origin_protect'] = isset($_POST['origin_protect']) ? sanitize_text_field($_POST['origin_protect']) : 'off';
+
+        $options['origin_region'] = in_array($options['regional'], ['oss-accelerate', 'oss-accelerate-overseas']) ? '' : $options['regional'];
 
         if ($options['regional'] === 'oss-rg-china-mainland' && $options['is_internal'] === 'true') {
             echo '<div class="error"><p><strong>无地域属性不支持内网，请重新填写配置！</strong></p></div>';
@@ -851,14 +852,10 @@ function oss_setting_page()
 
     $oss_regional = esc_attr($oss_options['regional']);
 
-    $oss_is_internal = esc_attr($oss_options['is_internal']);
-    $oss_is_internal = $oss_is_internal == 'true';
+    $oss_is_internal = esc_attr($oss_options['is_internal']) == 'true';
+    $oss_nothumb = esc_attr($oss_options['nothumb']) == 'true';
+    $oss_nolocalsaving = esc_attr($oss_options['nolocalsaving']) == 'true';
 
-    $oss_nothumb = esc_attr($oss_options['nothumb']);
-    $oss_nothumb = $oss_nothumb == 'true';
-
-    $oss_nolocalsaving = esc_attr($oss_options['nolocalsaving']);
-    $oss_nolocalsaving = $oss_nolocalsaving == 'true';
     $oss_update_file_name = esc_attr($oss_options['update_file_name']);
     $oss_origin_protect = esc_attr($oss_options['origin_protect'] ?? 'off') !== 'off' ? 'checked="checked"' : '';
 
