@@ -9,11 +9,11 @@ Stable tag: 1.5.0
 License: Apache2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0.html
 
-使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
+使用阿里云对象存储 OSS 作为附件存储空间。(This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.)
 
 == Description ==
 
-使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
+使用阿里云对象存储 OSS 作为附件存储空间。(This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.)
 
 - 依赖阿里云 OSS 服务：https://www.aliyun.com/product/oss
 

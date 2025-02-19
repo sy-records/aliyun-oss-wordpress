@@ -2,7 +2,7 @@
 /*
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
-Description: 使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
+Description: 使用阿里云对象存储 OSS 作为附件存储空间。(This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.)
 Version: 1.5.0
 Author: 沈唁
 Author URI: https://qq52o.me
