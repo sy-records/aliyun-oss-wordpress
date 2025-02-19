@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。（This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.）
-Version: 1.4.21
+Version: 1.5.0
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache2.0
@@ -18,8 +18,9 @@ use OSS\OssClient;
 use OSS\Credentials\CredentialsProvider;
 use AlibabaCloud\Credentials\Credential;
 use OSS\Credentials\StaticCredentialsProvider;
+use OSS\Core\OssException;
 
-define('OSS_VERSION', '1.4.21');
+define('OSS_VERSION', '1.5.0');
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 if (!function_exists('get_home_path')) {
@@ -58,6 +59,7 @@ function oss_get_default_options()
     return [
         'bucket' => '',
         'regional' => 'oss-cn-shanghai',
+        'origin_region' => '',
         'accessKeyId' => '',
         'accessKeySecret' => '',
         'is_internal' => 'false',
@@ -95,11 +97,31 @@ function oss_get_client()
     } else {
         $provider = new StaticCredentialsProvider(esc_attr($oss_options['accessKeyId']), esc_attr($oss_options['accessKeySecret']));
     }
+
+    $region = !empty($oss_options['origin_region']) ? esc_attr($oss_options['origin_region']) : esc_attr($oss_options['regional']);
+    if (($region == 'oss-accelerate' || $region == 'oss-accelerate-overseas') && empty($oss_options['origin_region'])) {
+        try {
+            $config = [
+                'provider'         => $provider,
+                'endpoint'         => $region == 'oss-accelerate' ? 'https://oss-cn-hangzhou.aliyuncs.com' : 'https://oss-cn-hongkong.aliyuncs.com',
+                'signatureVersion' => OssClient::OSS_SIGNATURE_VERSION_V4,
+                'region'           => $region == 'oss-accelerate' ? 'cn-hangzhou' : 'cn-hongkong',
+            ];
+            $region = (new OssClient($config))->getBucketInfo(esc_attr($oss_options['bucket']))->getLocation();
+            $oss_options['origin_region'] = sanitize_text_field($region);
+            update_option('oss_options', $oss_options);
+        } catch (OssException $e) {
+            error_log("get bucket location failed: {$e->getMessage()}");
+        }
+    }
+
+    $region = str_replace('oss-', '', $region);
+
     $config = [
         'provider'         => $provider,
         'endpoint'         => $endpoint,
         'signatureVersion' => OssClient::OSS_SIGNATURE_VERSION_V4,
-        'region'           => str_replace('oss-', '', esc_attr($oss_options['regional'])),
+        'region'           => $region,
     ];
     return new OssClient($config);
 }
@@ -118,7 +140,7 @@ function oss_get_bucket_endpoint($oss_options)
 function oss_get_bucket_name()
 {
     $oss_options = get_option('oss_options', oss_get_default_options());
-    return $oss_options['bucket'];
+    return esc_attr($oss_options['bucket']);
 }
 
 /**
