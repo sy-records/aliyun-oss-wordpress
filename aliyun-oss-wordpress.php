@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。(This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.)
-Version: 1.5.0
+Version: 1.5.1
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache2.0
@@ -20,7 +20,7 @@ use AlibabaCloud\Credentials\Credential;
 use OSS\Credentials\StaticCredentialsProvider;
 use OSS\Core\OssException;
 
-define('OSS_VERSION', '1.5.0');
+define('OSS_VERSION', '1.5.1');
 define('OSS_BASEFOLDER', plugin_basename(dirname(__FILE__)));
 
 if (!function_exists('get_home_path')) {
@@ -773,13 +773,15 @@ function oss_setting_page()
     if (!current_user_can('manage_options')) {
         wp_die('Insufficient privileges!');
     }
-    $options = [];
-    if (!empty($_POST) and $_POST['type'] == 'oss_set') {
-        $nonce = $_POST['update_oss_config-nonce'] ?? '';
-        if (empty($nonce) || !wp_verify_nonce($nonce, 'update_oss_config')) {
+    if (!empty($_POST) && !empty($_POST['type'])) {
+        $nonce = $_POST["{$_POST['type']}-nonce"] ?? '';
+        if (empty($nonce) || !wp_verify_nonce($nonce, $_POST['type'])) {
             wp_die('Illegal requests!');
         }
+    }
 
+    $options = [];
+    if (!empty($_POST) && $_POST['type'] == 'aliyun_oss_set') {
         $options['bucket'] = isset($_POST['bucket']) ? sanitize_text_field($_POST['bucket']) : '';
         $options['regional'] = isset($_POST['regional']) ? sanitize_text_field($_POST['regional']) : '';
         $options['role_name'] = isset($_POST['role_name']) ? sanitize_text_field($_POST['role_name']) : '';
@@ -801,7 +803,7 @@ function oss_setting_page()
         }
     }
 
-    if (!empty($_POST) and $_POST['type'] == 'aliyun_oss_all') {
+    if (!empty($_POST) && $_POST['type'] == 'aliyun_oss_all') {
         $files = oss_read_dir_queue(get_home_path(), oss_get_option('upload_path'));
         foreach ($files as $file) {
             oss_file_upload($file['key'], $file['filepath']);
@@ -810,16 +812,11 @@ function oss_setting_page()
     }
 
     // 替换数据库链接
-    if(!empty($_POST) and $_POST['type'] == 'aliyun_oss_replace') {
-        $nonce = $_POST['update_oss_replace-nonce'] ?? '';
-        if (empty($nonce) || !wp_verify_nonce($nonce, 'update_oss_replace')) {
-            wp_die('Illegal requests!');
-        }
-
+    if(!empty($_POST) && $_POST['type'] == 'aliyun_oss_replace') {
         $old_url = esc_url_raw($_POST['old_url']);
         $new_url = esc_url_raw($_POST['new_url']);
 
-        if (!empty($old_url) && !empty($new_url)) {
+        if (!empty($old_url)) {
             global $wpdb;
             $posts_name = $wpdb->prefix . 'posts';
             // 文章内容
@@ -872,7 +869,7 @@ function oss_setting_page()
                         <legend>Bucket名称</legend>
                     </th>
                     <td>
-                        <input type="text" name="bucket" value="<?php echo esc_attr($oss_options['bucket']); ?>" size="50" placeholder="请填写Bucket名称"/>
+                        <input type="text" name="bucket" required value="<?php echo esc_attr($oss_options['bucket']); ?>" size="50" placeholder="请填写Bucket名称"/>
 
                         <p>请先访问 <a href="https://oss.console.aliyun.com/bucket" target="_blank">阿里云控制台</a> 创建<code>Bucket</code>，再填写以上内容。</p>
                     </td>
@@ -901,14 +898,14 @@ function oss_setting_page()
                     <th>
                         <legend>AccessKeyId</legend>
                     </th>
-                    <td><input type="text" name="accessKeyId" value="<?php echo esc_attr($oss_options['accessKeyId']); ?>" size="50" placeholder="AccessKeyId"/></td>
+                    <td><input type="text" name="accessKeyId" required value="<?php echo esc_attr($oss_options['accessKeyId']); ?>" size="50" placeholder="AccessKeyId"/></td>
                 </tr>
                 <tr>
                     <th>
                         <legend>AccessKeySecret</legend>
                     </th>
                     <td>
-                        <input type="password" name="accessKeySecret" value="<?php echo esc_attr($oss_options['accessKeySecret']); ?>" size="50" placeholder="AccessKeySecret"/>
+                        <input type="password" name="accessKeySecret" required value="<?php echo esc_attr($oss_options['accessKeySecret']); ?>" size="50" placeholder="AccessKeySecret"/>
                     </td>
                 </tr>
                 <tr>
@@ -955,7 +952,7 @@ function oss_setting_page()
                         <legend>本地文件夹</legend>
                     </th>
                     <td>
-                        <input type="text" name="upload_path" value="<?php echo oss_get_option('upload_path'); ?>" size="50" placeholder="请输入上传文件夹"/>
+                        <input type="text" name="upload_path" required value="<?php echo oss_get_option('upload_path'); ?>" size="50" placeholder="请输入上传文件夹"/>
                         <p>附件在服务器上的存储位置，例如： <code>wp-content/uploads</code> （注意不要以“/”开头和结尾），根目录请输入<code>.</code>。</p>
                     </td>
                 </tr>
@@ -964,7 +961,7 @@ function oss_setting_page()
                         <legend>URL前缀</legend>
                     </th>
                     <td>
-                        <input type="text" name="upload_url_path" value="<?php echo oss_get_option('upload_url_path'); ?>" size="50" placeholder="请输入URL前缀"/>
+                        <input type="text" name="upload_url_path" required value="<?php echo oss_get_option('upload_url_path'); ?>" size="50" placeholder="请输入URL前缀"/>
 
                         <p><b>注意：</b></p>
 
@@ -1010,10 +1007,10 @@ function oss_setting_page()
                 <tr>
                     <th><legend>保存/更新选项</legend></th>
                     <td><input type="submit" class="button button-primary" value="保存更改"/></td>
-                    <?php wp_nonce_field('update_oss_config', 'update_oss_config-nonce'); ?>
                 </tr>
             </table>
-            <input type="hidden" name="type" value="oss_set">
+            <input type="hidden" name="type" value="aliyun_oss_set">
+            <?php wp_nonce_field('aliyun_oss_set', 'aliyun_oss_set-nonce'); ?>
         </form>
         <form method="post">
             <table class="form-table">
@@ -1022,6 +1019,7 @@ function oss_setting_page()
                         <legend>同步历史附件</legend>
                     </th>
                     <input type="hidden" name="type" value="aliyun_oss_all">
+                    <?php wp_nonce_field('aliyun_oss_all', 'aliyun_oss_all-nonce'); ?>
                     <td>
                         <input type="submit" class="button button-secondary" value="开始同步"/>
                         <p><b>注意：如果是首次同步，执行时间将会非常长（根据你的历史附件数量），有可能会因为执行时间过长，导致页面显示超时或者报错。<br> 所以，建议附件数量过多的用户，考虑官方的<a target="_blank" rel="nofollow" href="https://help.aliyun.com/knowledge_detail/39628.html">同步工具</a>或下载 WP-CLI 使用插件内置的命令进行上传。</b></p>
@@ -1037,7 +1035,7 @@ function oss_setting_page()
                         <legend>数据库原链接替换</legend>
                     </th>
                     <td>
-                        <input type="text" name="old_url" size="50" placeholder="请输入要替换的旧域名"/>
+                        <input type="text" name="old_url" required size="50" placeholder="请输入要替换的旧域名"/>
                     </td>
                 </tr>
                 <tr>
@@ -1053,7 +1051,7 @@ function oss_setting_page()
                         <legend></legend>
                     </th>
                     <input type="hidden" name="type" value="aliyun_oss_replace">
-                    <?php wp_nonce_field('update_oss_replace', 'update_oss_replace-nonce'); ?>
+                    <?php wp_nonce_field('aliyun_oss_replace', 'aliyun_oss_replace-nonce'); ?>
                     <td>
                         <input type="submit" class="button button-secondary" value="开始替换"/>
                         <p><b>注意：如果是首次替换，请注意备份！此功能会替换文章以及设置的特色图片（题图）等使用的资源链接</b></p>
