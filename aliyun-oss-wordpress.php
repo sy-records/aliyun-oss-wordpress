@@ -150,18 +150,18 @@ function oss_check_bucket($oss_options)
         $bucket = oss_get_bucket_name($oss_options);
         $info = $client->putObject($bucket, 'oss-aliyun.txt', OSS_VERSION);
         if (!empty($info)) {
-          $client->deleteObject($bucket, 'oss-aliyun.txt');
+            $client->deleteObject($bucket, 'oss-aliyun.txt');
         }
     } catch (OssException $e) {
-      $message = $e->getErrorMessage();
-      $errorCode = $e->getErrorCode();
-      if ($errorCode == 'NoSuchBucket') {
-        $message = '<code>Bucket</code> 不存在，请检查Bucket名称！';
-      } elseif ($errorCode == 'InvalidAccessKeyId') {
-        $message = '<code>AccessKeyId</code> 或 <code>AccessKeySecret</code> 有误，请检查配置信息！';
-      }
+        $message = $e->getErrorMessage();
+        $errorCode = $e->getErrorCode();
+        if ($errorCode == 'NoSuchBucket') {
+            $message = '<code>Bucket</code> 不存在，请检查Bucket名称！';
+        } elseif ($errorCode == 'InvalidAccessKeyId') {
+            $message = '<code>AccessKeyId</code> 或 <code>AccessKeySecret</code> 有误，请检查配置信息！';
+        }
     } catch (\Throwable $e) {
-      $message = (string)$e;
+        $message = (string)$e;
     }
 
     echo "<div class='error'><p><strong>{$message}</strong></p></div>";
