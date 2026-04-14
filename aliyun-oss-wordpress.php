@@ -818,7 +818,7 @@ function oss_setting_page()
         $options['is_internal'] = isset($_POST['is_internal']) ? 'true' : 'false';
         $options['nothumb'] = isset($_POST['nothumb']) ? 'true' : 'false';
         $options['nolocalsaving'] = isset($_POST['nolocalsaving']) ? 'true' : 'false';
-        $options['upload_url_path'] = isset($_POST['upload_url_path']) ? sanitize_text_field(stripslashes($_POST['upload_url_path'])) : '';
+        $options['upload_url_path'] = isset($_POST['upload_url_path']) ? sanitize_text_field(trim(stripslashes($_POST['upload_url_path']), '/')) : '';
         $options['style'] = isset($_POST['style']) ? sanitize_text_field($_POST['style']) : '';
         $options['update_file_name'] = isset($_POST['update_file_name']) ? sanitize_text_field($_POST['update_file_name']) : 'false';
         $options['origin_protect'] = isset($_POST['origin_protect']) ? sanitize_text_field($_POST['origin_protect']) : 'off';
@@ -873,7 +873,7 @@ function oss_setting_page()
             $upload_path = sanitize_text_field(trim(stripslashes($_POST['upload_path']), '/'));
             $upload_path = $upload_path == '' ? 'wp-content/uploads' : $upload_path;
             update_option('upload_path', $upload_path);
-            update_option('upload_url_path', trim($options['upload_url_path'], '/'));
+            update_option('upload_url_path', $options['upload_url_path']);
             echo '<div class="updated"><p><strong>设置已保存！</strong></p></div>';
         }
     }
