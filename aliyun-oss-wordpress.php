@@ -152,6 +152,8 @@ function oss_check_bucket($oss_options)
         if (!empty($info)) {
             $client->deleteObject($bucket, 'oss-aliyun.txt');
         }
+
+        return true;
     } catch (OssException $e) {
         $message = $e->getErrorMessage();
         $errorCode = $e->getErrorCode();
