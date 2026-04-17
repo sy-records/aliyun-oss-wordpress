@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。(This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.)
-Version: 1.5.1
+Version: 1.5.2
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache2.0
@@ -79,9 +79,9 @@ function oss_set_options()
     add_option('oss_options', oss_get_default_options(), '', 'yes');
 }
 
-function oss_get_client()
+function oss_get_client($oss_options = null)
 {
-    $oss_options = get_option('oss_options', oss_get_default_options());
+    if (is_null($oss_options)) $oss_options = get_option('oss_options', oss_get_default_options());
     $role_name = esc_attr($oss_options['role_name'] ?? '');
     $endpoint = oss_get_bucket_endpoint($oss_options);
 
@@ -137,10 +137,37 @@ function oss_get_bucket_endpoint($oss_options)
     return "{$protocol}://{$regional}.aliyuncs.com";
 }
 
-function oss_get_bucket_name()
+function oss_get_bucket_name($oss_options = null)
 {
-    $oss_options = get_option('oss_options', oss_get_default_options());
+    if (is_null($oss_options)) $oss_options = get_option('oss_options', oss_get_default_options());
     return esc_attr($oss_options['bucket']);
+}
+
+function oss_check_bucket($oss_options)
+{
+    try {
+        $client = oss_get_client($oss_options);
+        $bucket = oss_get_bucket_name($oss_options);
+        $info = $client->putObject($bucket, 'oss-aliyun.txt', OSS_VERSION);
+        if (!empty($info)) {
+            $client->deleteObject($bucket, 'oss-aliyun.txt');
+        }
+
+        return true;
+    } catch (OssException $e) {
+        $message = $e->getErrorMessage();
+        $errorCode = $e->getErrorCode();
+        if ($errorCode == 'NoSuchBucket') {
+            $message = '<code>Bucket</code> 不存在，请检查Bucket名称！';
+        } elseif ($errorCode == 'InvalidAccessKeyId') {
+            $message = '<code>AccessKeyId</code> 或 <code>AccessKeySecret</code> 有误，请检查配置信息！';
+        }
+    } catch (\Throwable $e) {
+        $message = (string)$e;
+    }
+
+    echo "<div class='error'><p><strong>{$message}</strong></p></div>";
+    return false;
 }
 
 /**
@@ -642,9 +669,11 @@ function oss_get_regional($regional)
         'oss-cn-heyuan' => '华南 2（河源）',
         'oss-cn-guangzhou' => '华南 3（广州）',
         'oss-cn-chengdu' => '西南 1（成都）',
+        'oss-cn-zhongwei' => '西北2（中卫）',
         'oss-cn-hongkong' => '中国（香港）',
         'oss-us-west-1' => '美国西部 1 （硅谷）',
         'oss-us-east-1' => '美国东部 1 （弗吉尼亚）',
+        'oss-na-south-1' => '墨西哥',
         'oss-ap-southeast-1' => '新加坡',
         'oss-ap-southeast-2' => '澳大利亚（悉尼）',
         'oss-ap-southeast-3' => '马来西亚（吉隆坡）',
@@ -660,7 +689,8 @@ function oss_get_regional($regional)
         'oss-cn-hzfinance' => '杭州金融云公网',
         'oss-cn-shanghai-finance-1-pub' => '上海金融云公网',
         'oss-cn-szfinance' => '深圳金融云公网',
-        'cn-beijing-finance-1' => '北京金融云公网',
+        'oss-cn-beijing-finance-1' => '北京金融云公网',
+        'oss-cn-north-2-gov-1' => '华北2 阿里政务云1',
     ];
 
     foreach ($options as $value => $text) {
@@ -790,11 +820,10 @@ function oss_setting_page()
         $options['is_internal'] = isset($_POST['is_internal']) ? 'true' : 'false';
         $options['nothumb'] = isset($_POST['nothumb']) ? 'true' : 'false';
         $options['nolocalsaving'] = isset($_POST['nolocalsaving']) ? 'true' : 'false';
-        $options['upload_url_path'] = isset($_POST['upload_url_path']) ? sanitize_text_field(stripslashes($_POST['upload_url_path'])) : '';
+        $options['upload_url_path'] = isset($_POST['upload_url_path']) ? sanitize_text_field(trim(stripslashes($_POST['upload_url_path']), '/')) : '';
         $options['style'] = isset($_POST['style']) ? sanitize_text_field($_POST['style']) : '';
         $options['update_file_name'] = isset($_POST['update_file_name']) ? sanitize_text_field($_POST['update_file_name']) : 'false';
         $options['origin_protect'] = isset($_POST['origin_protect']) ? sanitize_text_field($_POST['origin_protect']) : 'off';
-
         $options['origin_region'] = in_array($options['regional'], ['oss-accelerate', 'oss-accelerate-overseas']) ? '' : $options['regional'];
 
         if ($options['regional'] === 'oss-rg-china-mainland' && $options['is_internal'] === 'true') {
@@ -834,15 +863,21 @@ function oss_setting_page()
 
     // 若$options不为空数组，则更新数据
     if ($options !== []) {
-        //更新数据库
-        update_option('oss_options', $options);
+        $check_status = true;
+        if (!empty($options['bucket']) && !empty($options['regional']) && !empty($options['accessKeyId']) && !empty($options['accessKeySecret'])) {
+            $check_status = oss_check_bucket($options);
+        }
 
-        $upload_path = sanitize_text_field(trim(stripslashes($_POST['upload_path']), '/'));
-        $upload_path = $upload_path == '' ? 'wp-content/uploads' : $upload_path;
-        update_option('upload_path', $upload_path);
-        $upload_url_path = sanitize_text_field(trim(stripslashes($_POST['upload_url_path']), '/'));
-        update_option('upload_url_path', $upload_url_path);
-        echo '<div class="updated"><p><strong>设置已保存！</strong></p></div>';
+        if ($check_status) {
+            //更新数据库
+            update_option('oss_options', $options);
+
+            $upload_path = sanitize_text_field(trim(stripslashes($_POST['upload_path']), '/'));
+            $upload_path = $upload_path == '' ? 'wp-content/uploads' : $upload_path;
+            update_option('upload_path', $upload_path);
+            update_option('upload_url_path', $options['upload_url_path']);
+            echo '<div class="updated"><p><strong>设置已保存！</strong></p></div>';
+        }
     }
 
     $oss_options = get_option('oss_options', oss_get_default_options());
