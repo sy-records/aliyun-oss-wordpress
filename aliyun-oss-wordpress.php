@@ -3,7 +3,7 @@
 Plugin Name: OSS Aliyun
 Plugin URI: https://github.com/sy-records/aliyun-oss-wordpress
 Description: 使用阿里云对象存储 OSS 作为附件存储空间。(This is a plugin that uses Aliyun Object Storage Service for attachments remote saving.)
-Version: 1.5.2
+Version: 1.5.3
 Author: 沈唁
 Author URI: https://qq52o.me
 License: Apache2.0
@@ -155,7 +155,7 @@ function oss_check_bucket($oss_options)
 
         return true;
     } catch (OssException $e) {
-        $message = $e->getErrorMessage();
+        $message = $e->getErrorMessage() ?: $e->getMessage();
         $errorCode = $e->getErrorCode();
         if ($errorCode == 'NoSuchBucket') {
             $message = '<code>Bucket</code> 不存在，请检查Bucket名称！';
@@ -657,9 +657,9 @@ function oss_get_regional($regional)
         'oss-rg-china-mainland' => '无地域属性（中国内地）',
         'oss-cn-hangzhou' => '华东 1（杭州）',
         'oss-cn-shanghai' => '华东 2（上海）',
-        'oss-cn-nanjing' => '华东 5（南京-本地地域）',
-        'oss-cn-fuzhou' => '华东 6（福州-本地地域）',
-        'oss-cn-wuhan' => '华中 1（武汉-本地地域）',
+        'oss-cn-nanjing' => '华东 5 （南京-本地地域-关停中）',
+        'oss-cn-fuzhou' => '华东 6（福州-本地地域-关停中）',
+        'oss-cn-wuhan-lr' => '华中 1（武汉-本地地域）',
         'oss-cn-qingdao' => '华北 1（青岛）',
         'oss-cn-beijing' => '华北 2（北京）',
         'oss-cn-zhangjiakou' => '华北 3（张家口）',
