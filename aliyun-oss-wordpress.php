@@ -657,7 +657,7 @@ function oss_get_regional($regional)
         'oss-rg-china-mainland' => '无地域属性（中国内地）',
         'oss-cn-hangzhou' => '华东 1（杭州）',
         'oss-cn-shanghai' => '华东 2（上海）',
-        'oss-cn-nanjing' => '华东 5 （南京-本地地域-关停中）',
+        'oss-cn-nanjing' => '华东 5（南京-本地地域-关停中）',
         'oss-cn-fuzhou' => '华东 6（福州-本地地域-关停中）',
         'oss-cn-wuhan-lr' => '华中 1（武汉-本地地域）',
         'oss-cn-qingdao' => '华北 1（青岛）',
