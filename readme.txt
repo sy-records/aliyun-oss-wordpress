@@ -80,7 +80,7 @@ License URI: http://www.apache.org/licenses/LICENSE-2.0.html
 
 = 1.5.3 =
 
-- Fix wuhan region endpoint error
+- Fixed endpoint errors in the Wuhan region
 
 = 1.5.2 =
 
